@@ -1,0 +1,15 @@
+body {
+    background-image: url("/public/images/background.jpg");
+    height: 100vh;
+    widows: 100vw;
+    background-position: left;
+    background-repeat: no-repeat;
+    background-size: cover;
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+
+}
+
+p {
+    color: aliceblue;
+}

@@ -1,0 +1,42 @@
+{{define "meetings"}}
+<!DOCTYPE html>
+<html>
+{{template "header" .}}
+<body>
+    <link rel="stylesheet" href="./public/css/meetings.css"/>
+    <script src="./public/js/meetings.js"></script>
+    <div id="navbar">
+        {{template "navbar" .}}
+    </div>
+    {{template "createMeeting" .}}
+    <button onclick="showCreateMeetingModal()">Add Meeting</button>
+    <div class="meetings">
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>Time the meeting was created in DB</th>
+            <th>Number of Attendees</th>
+            <th>Time Space considered</th>
+            <th>Time Difference between time stamps</th>
+            <th>Time Difference between delay actions</th>
+            <th>Number of Control Entities</th>
+            <th>Status</th>
+        </tr>
+        {{range $k, $v := .Data}}
+        <tr>
+            <td>{{$v.Name}}</td>
+            <td>{{$v.MTime}}</td>
+            <td>{{$v.NumAttendees}}</td>
+            <td>{{$v.TimeSpace}}</td>
+            <td>{{$v.TimeDiff}}</td>
+            <td>{{$v.ActionTimeDiff}}</td>
+            <td>{{$v.NoCntrlEnts}}</td>
+            <td><button>Join</button></td>
+        </tr>
+        {{end}}
+    </table>
+    </div>
+    {{template "footer" .}}
+</body>
+</html>
+{{end}}

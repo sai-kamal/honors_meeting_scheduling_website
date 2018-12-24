@@ -1,0 +1,46 @@
+{{define "createMeeting"}}
+<link rel="stylesheet" href="./public/css/createMeeting.css"/>
+<script src="./public/js/createMeeting.js"></script>
+
+<div id="createMeeting" class="modal">
+  <h2 id="title">Create Meeting</h2>
+  <br/>
+  <form class="modal-content animate" action="/createMeeting" method="POST">
+    <span onclick="hideCreateMeetingModal()" class="close" title="Close Modal">&times;</span>
+
+    <div class="container">
+      <label for="name"><b>Name</b></label>
+      <input type="text" placeholder="Enter Name" name="name" required>
+      <br/>
+      <label for="num_attendees"><b>Number of Attendees</b></label>
+      <input type="text" placeholder="Enter Number of Attendees" name="num_attendees" required>
+      <br/>
+      <label for="time_space"><b>Time Space</b></label>
+      <input type="text" placeholder="Enter Time Space" name="time_space" required>
+      <br/>
+      <label for="time_diff"><b>Time Difference</b></label>
+      <input type="text" placeholder="Enter Time Difference" name="time_diff" required>
+      <br/>
+      <label for="action_time_diff"><b>Action Time Difference</b></label>
+      <input type="text" placeholder="Enter Action Time Difference" name="action_time_diff" required>
+      <br/>
+      <label for="no_cntrl_ents"><b>Number of Control Entities</b></label>
+      <input type="text" placeholder="Enter Number of Control Entities" name="no_cntrl_ents" required>
+
+      <button type="submit">Create</button>
+      <button type="button" onclick="hideCreateMeetingModal()" class="cancelbtn">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<script>
+// Get the modal
+var modal = document.getElementById('createMeeting');
+// When the user clicks anywhere outside of the modal, close it
+window.onclick = function(event) {
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+}
+</script>
+{{end}}

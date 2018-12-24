@@ -1,0 +1,14 @@
+{{define "home"}}
+<!DOCTYPE html>
+<html>
+{{template "header" .}}
+<body>
+    <link rel="stylesheet" href="./public/css/home.css"/>
+    <div id="navbar">
+        {{template "navbar" .}}
+    </div>
+    <p> welcome {{.User.Username }}!!</p>
+    {{template "footer" .}}
+</body>
+</html>
+{{end}}

@@ -1,0 +1,37 @@
+{{define "login"}}
+<link rel="stylesheet" href="./public/css/login.css"/>
+<script src="./public/js/login.js"></script>
+
+<div id="login" class="modal">
+  <h2 id="title">Log In</h2>
+  <br/>
+  <form class="modal-content animate" action="/login" method="POST">
+    <span onclick="hideLogInModal()" class="close" title="Close Modal">&times;</span>
+
+    <div class="container">
+      <label for="username"><b>Username</b></label>
+      <input type="text" placeholder="Enter Username" name="username" required>
+      <br/>
+      <label for="password"><b>Password</b></label>
+      <input type="text" placeholder="Enter Password" name="password" required>
+        
+      <button type="submit">Login</button>
+      <button type="button" onclick="hideLogInModal()" class="cancelbtn">Cancel</button>
+      {{/* <label>
+        <input type="checkbox" checked="checked" name="remember"> Remember me
+      </label> */}}
+    </div>
+  </form>
+</div>
+<script>
+// Get the modal
+var modal = document.getElementById('login');
+
+// When the user clicks anywhere outside of the modal, close it
+window.onclick = function(event) {
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+}
+</script>
+{{end}}

@@ -1,0 +1,13 @@
+{{define "index"}}
+<!DOCTYPE html>
+<html>
+{{template "header" .}}
+<body>
+    <link rel="stylesheet" href="./public/css/index.css"/>
+    <div id="navbar">
+        {{template "navbar" .}}
+    </div>
+    {{template "footer" .}}
+</body>
+</html>
+{{end}}

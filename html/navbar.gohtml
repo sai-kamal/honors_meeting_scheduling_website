@@ -1,0 +1,17 @@
+{{define "navbar"}}
+<link rel="stylesheet" href="./public/css/navbar.css"/>
+<script src="./public/js/navbar.js"></script>
+{{template "login" .}}
+<div class="topnav" id="myTopnav">
+  <a href="home" class="active">Home</a>
+  {{if .IsAuth}}
+    <a href="logout" >Log Out</a>
+    <a href="meetings">Meetings</a>
+  {{else}}
+    <a href="javascript:void(0);" onclick="showLogInModal()">Log In</a>
+  {{end}}
+  <a href="javascript:void(0);" class="icon" onclick="myFunction()">
+    <i class="fa fa-bars"></i>
+  </a>
+</div>
+{{end}}

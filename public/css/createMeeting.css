@@ -1,0 +1,142 @@
+input[type=text],
+input[type=password] {
+    padding: 1% 8%;
+    position: relative;
+    left: 35.5%;
+    margin: 1%;
+    text-align: center;
+    display: block;
+    border: 3px solid #ccc;
+    box-sizing: border-box;
+}
+
+#title {
+    position: relative;
+    left: 49.5%;
+    top: 5%;
+    color: aliceblue;
+    font-weight: bold;
+}
+
+label {
+    position: relative;
+    left: 50%;
+}
+/* Set a style for all buttons */
+button {
+    background-color: #4CAF50;
+    color: white;
+    position: relative;
+    left: 45%;
+    padding: 1% 2%;
+    margin: 2%;
+    border: none;
+    cursor: pointer;
+    width: auto;
+}
+
+button:hover {
+    opacity: 0.6;
+}
+
+/* Extra styles for the cancel button */
+.cancelbtn {
+    width: auto;
+    padding: 1% 2%;
+    margin: 2%;
+    background-color: #f44336;
+}
+
+.close {
+    padding: 1%;
+}
+
+.container {
+    padding: 1%;
+}
+
+/* The Modal (background) */
+.modal {
+    display: none;
+    /* Hidden by default */
+    position: absolute;
+    /* Stay in place */
+    z-index: 1;
+    /* Sit on top */
+    left: auto;
+    top: auto;
+    width: auto;
+    height: auto;
+    overflow: auto;
+    /* Enable scroll if needed */
+    background-color: rgb(0, 0, 0);
+    /* Fallback color */
+    background-color: rgba(0, 0, 0, 0.4);
+    /* Black w/ opacity */
+    /* padding-top: 5%; */
+    margin-top: 5%;
+}
+
+/* Modal Content/Box */
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto 15% auto;
+    /* 5% from the top, 15% from the bottom and centered */
+    border: 1px solid #888;
+    width: 10%;
+    /* Could be more or less, depending on screen size */
+}
+
+/* The Close Button (x) */
+.close {
+    position: absolute;
+    right: 2%;
+    top: 0;
+    color: #000;
+    font-size: 4%;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: red;
+    cursor: pointer;
+}
+
+/* Add Zoom Animation */
+.animate {
+    -webkit-animation: animatezoom 0.6s;
+    animation: animatezoom 0.6s
+}
+
+@-webkit-keyframes animatezoom {
+    from {
+        -webkit-transform: scale(0)
+    }
+
+    to {
+        -webkit-transform: scale(1)
+    }
+}
+
+@keyframes animatezoom {
+    from {
+        transform: scale(0)
+    }
+
+    to {
+        transform: scale(1)
+    }
+}
+
+/* Change styles for span and cancel button on extra small screens */
+@media screen and (max-width: 300px) {
+    span.psw {
+        display: block;
+        float: none;
+    }
+
+    .cancelbtn {
+        width: auto;
+    }
+}
