@@ -1,4 +1,3 @@
-function hideLogInModal() {
-    var x = document.getElementById('login');
-    x.style.display = 'none';
-}
+$(document).ready(function () {
+    $('.modal').modal();
+});

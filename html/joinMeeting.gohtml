@@ -1,0 +1,26 @@
+{{define "joinMeeting"}}
+<link rel="stylesheet" href="./public/css/joinMeeting.css"/>
+<script src="./public/js/joinMeeting.js"></script>
+
+<div id="joinMeeting" class="modal">
+  <div class="modal-content">
+    <h4 class="card-panel teal lighten-2">Join Meeting</h4>
+    <div class="row">
+      <form class="col s12" action="/joinMeeting" method="POST">
+        <div class="row">
+          <div class="input-field col s12">
+            <input id="delay" class="validate" type="text" name="delay">
+            <label for="delay">Delay</label>
+          </div>
+        </div>
+        <input id="meeting_name" class="validate" type="hidden" name="meeting_name">
+        <div class="row">
+          <div class="input-field col s12">
+            <button class="btn waves-effect waves-light" type="submit">Create</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{{end}}

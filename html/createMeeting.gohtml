@@ -3,44 +3,53 @@
 <script src="./public/js/createMeeting.js"></script>
 
 <div id="createMeeting" class="modal">
-  <h2 id="title">Create Meeting</h2>
-  <br/>
-  <form class="modal-content animate" action="/createMeeting" method="POST">
-    <span onclick="hideCreateMeetingModal()" class="close" title="Close Modal">&times;</span>
-
-    <div class="container">
-      <label for="name"><b>Name</b></label>
-      <input type="text" placeholder="Enter Name" name="name" required>
-      <br/>
-      <label for="num_attendees"><b>Number of Attendees</b></label>
-      <input type="text" placeholder="Enter Number of Attendees" name="num_attendees" required>
-      <br/>
-      <label for="time_space"><b>Time Space</b></label>
-      <input type="text" placeholder="Enter Time Space" name="time_space" required>
-      <br/>
-      <label for="time_diff"><b>Time Difference</b></label>
-      <input type="text" placeholder="Enter Time Difference" name="time_diff" required>
-      <br/>
-      <label for="action_time_diff"><b>Action Time Difference</b></label>
-      <input type="text" placeholder="Enter Action Time Difference" name="action_time_diff" required>
-      <br/>
-      <label for="no_cntrl_ents"><b>Number of Control Entities</b></label>
-      <input type="text" placeholder="Enter Number of Control Entities" name="no_cntrl_ents" required>
-
-      <button type="submit">Create</button>
-      <button type="button" onclick="hideCreateMeetingModal()" class="cancelbtn">Cancel</button>
+  <div class="modal-content">
+    <h4 class="card-panel teal lighten-2">Create Meeting</h4>
+    <div class="row">
+      <form class="col s12" action="/createMeeting" method="POST">
+        <div class="row">
+          <div class="input-field col s12">
+            <input id="name" class="validate" type="text" name="name">
+            <label for="name">Name</label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="input-field col s12">
+            <input id="num_attendees" class="validate" type="text" name="num_attendees">
+            <label for="num_attendees">Number of Attendees</label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="input-field col s12">
+            <input id="time_space" class="validate" type="text" name="time_space">
+            <label for="time_space">Time Space</label>
+          </div>
+        </div>  
+        <div class="row">
+          <div class="input-field col s12">
+            <input id="time_diff" class="validate" type="text" name="time_diff">
+            <label for="time_diff">Time Difference</label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="input-field col s12">
+            <input id="action_time_diff" class="validate" type="text" name="action_time_diff">
+            <label for="action_time_diff">Action Time Difference</label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="input-field col s12">
+            <input id="no_cntrl_ents" class="validate" type="text" name="no_cntrl_ents">
+            <label for="no_cntrl_ents">Number of Control Entities</label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="input-field col s12">
+          <button class="btn waves-effect waves-light" type="submit">Create</button>
+          </div>
+        </div>
+      </form>
     </div>
-  </form>
+  </div>
 </div>
-
-<script>
-// Get the modal
-var modal = document.getElementById('createMeeting');
-// When the user clicks anywhere outside of the modal, close it
-window.onclick = function(event) {
-    if (event.target == modal) {
-        modal.style.display = "none";
-    }
-}
-</script>
 {{end}}

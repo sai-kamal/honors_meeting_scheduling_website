@@ -1,17 +1,39 @@
 {{define "navbar"}}
 <link rel="stylesheet" href="./public/css/navbar.css"/>
 <script src="./public/js/navbar.js"></script>
+
 {{template "login" .}}
-<div class="topnav" id="myTopnav">
-  <a href="home" class="active">Home</a>
-  {{if .IsAuth}}
-    <a href="logout" >Log Out</a>
-    <a href="meetings">Meetings</a>
-  {{else}}
-    <a href="javascript:void(0);" onclick="showLogInModal()">Log In</a>
-  {{end}}
-  <a href="javascript:void(0);" class="icon" onclick="myFunction()">
-    <i class="fa fa-bars"></i>
-  </a>
-</div>
+
+{{if (eq .Route "/")}}
+  <nav class="nb teal accent-1">
+  {{/* <nav class="transparent z-depth-0"> */}}
+{{else}}
+  <nav class="teal lighten-2">
+{{end}}
+  <div class="nav-wrapper">
+    <a href="/" class="brand-logo">Logo</a>
+    <a href="javascript:void(0);" data-target="mobile-demo" class="sidenav-trigger"><i class="fa fa-bars"></i></a>
+    <ul class="right hide-on-med-and-down">
+      {{if not .IsAuth}}
+        <li><a class="waves-effect waves-light modal-trigger" href="#login">Login</a></li>
+      {{else}}
+        {{if .IsAdmin}}
+          <li><a class="waves-effect waves-light modal-trigger" href="#createMeeting"> Create Meeting</a></li>
+          {{template "createMeeting" .}}
+        {{end}}
+        <li><a href="meetings">Meetings</a></li>
+        <li><a href="logout">Logout</a></li>
+      {{end}}
+    </ul>
+  </div>
+</nav>
+
+<ul class="sidenav" id="mobile-demo">
+  {{if not .IsAuth}}
+      <li><a href="#login">Login</a></li>
+    {{else}}
+      <li><a href="meetings">Meetings</a></li>
+      <li><a href="logout">Logout</a></li>
+    {{end}}
+</ul>
 {{end}}

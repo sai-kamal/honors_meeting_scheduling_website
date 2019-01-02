@@ -8,10 +8,11 @@
     <div id="navbar">
         {{template "navbar" .}}
     </div>
-    {{template "createMeeting" .}}
-    <button onclick="showCreateMeetingModal()">Add Meeting</button>
+    <div class="join_meeting">
+        {{template "joinMeeting" .}}
+    </div>
     <div class="meetings">
-    <table>
+    <table class="striped highlight responsive-table">
         <tr>
             <th>Name</th>
             <th>Time the meeting was created in DB</th>
@@ -23,16 +24,20 @@
             <th>Status</th>
         </tr>
         {{range $k, $v := .Data}}
-        <tr>
-            <td>{{$v.Name}}</td>
-            <td>{{$v.MTime}}</td>
-            <td>{{$v.NumAttendees}}</td>
-            <td>{{$v.TimeSpace}}</td>
-            <td>{{$v.TimeDiff}}</td>
-            <td>{{$v.ActionTimeDiff}}</td>
-            <td>{{$v.NoCntrlEnts}}</td>
-            <td><button>Join</button></td>
-        </tr>
+            <tr>
+                <td>{{$v.Name}}</td>
+                <td>{{$v.MTime}}</td>
+                <td>{{$v.NumAttendees}}</td>
+                <td>{{$v.TimeSpace}}</td>
+                <td>{{$v.TimeDiff}}</td>
+                <td>{{$v.ActionTimeDiff}}</td>
+                <td>{{$v.NoCntrlEnts}}</td>
+                {{if not $v.IsComplete}}
+                    <td><button class="waves-effect waves-light btn" id="{{$v.Name}}" onclick="join_meeting({{$v.Name}})">Join</button></td>
+                {{else}}
+                    <td><button class="waves-effect waves-light btn" id="{{$v.Name}}" onclick="view_meeting({{$v.Name}})">View Log</button></td>
+                {{end}}
+            </tr>
         {{end}}
     </table>
     </div>

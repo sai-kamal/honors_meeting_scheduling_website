@@ -1,5 +1,5 @@
 body {
-    background-image: url("/public/images/background.jpg");
+    background-image: url("/public/images/background.gif");
     height: 100vh;
     widows: 100vw;
     background-position: left;
@@ -7,9 +7,4 @@ body {
     background-size: cover;
     margin: 0;
     font-family: Arial, Helvetica, sans-serif;
-
-}
-
-p {
-    color: aliceblue;
 }

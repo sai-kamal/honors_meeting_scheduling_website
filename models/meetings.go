@@ -31,11 +31,12 @@ func GetMeetings(route string) []Meeting {
 		var meeting Meeting
 		meeting.MTime = val[0].(string)
 		meeting.ActionTimeDiff, _ = val[1].(json.Number).Int64()
-		meeting.Name, _ = val[2].(json.Number).Int64()
-		meeting.NoCntrlEnts, _ = val[3].(json.Number).Int64()
-		meeting.NumAttendees, _ = val[4].(json.Number).Int64()
-		meeting.TimeDiff, _ = val[5].(json.Number).Int64()
-		meeting.TimeSpace, _ = val[6].(json.Number).Int64()
+		meeting.IsComplete = val[2].(bool)
+		meeting.Name, _ = val[3].(json.Number).Int64()
+		meeting.NoCntrlEnts, _ = val[4].(json.Number).Int64()
+		meeting.NumAttendees, _ = val[5].(json.Number).Int64()
+		meeting.TimeDiff, _ = val[6].(json.Number).Int64()
+		meeting.TimeSpace, _ = val[7].(json.Number).Int64()
 		meetings = append(meetings, meeting)
 	}
 	return meetings
