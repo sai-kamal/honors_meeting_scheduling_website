@@ -12,7 +12,19 @@
             <input id="delay" class="validate" type="text" name="delay">
             <label for="delay">Delay</label>
           </div>
+          <div class="input-field col s12">
+            <select name="importance">
+              <option value="" disabled selected>Importance of Meeting</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
+            <label for="importance">Importance</label>
+          </div>
         </div>
+        {{/* value of meeting name is added via js */}}
         <input id="meeting_name" class="validate" type="hidden" name="meeting_name">
         <div class="row">
           <div class="input-field col s12">

@@ -1,8 +1,8 @@
-function join_meeting(name) {
-    $("#meeting_name").val(name);
+function join_meeting(meeting_name) {
+    $("#meeting_name").val(meeting_name);
     $("#joinMeeting").modal("open");
 }
 
 function view_meeting(name) {
-    //join user into the meeting
+    //TODO: shows new page with log of the meeting
 }

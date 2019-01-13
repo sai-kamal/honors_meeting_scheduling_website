@@ -27,43 +27,23 @@ type Page struct {
 	Data    interface{} //pass any extra data
 }
 
-//Message struct used to
-type Message struct {
-	Username  string `json:"username"`
-	Message   string `json:"message"`
-	Action    string `json:"action"`
-	ActionInt int    `json:"action_int"`
-}
-
-//UserMeetingInfo contains info about users who joined a meeting
-type UserMeetingInfo struct {
-	Delay       int    `json:"delay" schema:"delay"`
-	MeetingName string `json:"meeting_name" schema:"meeting_name"`
-}
-
 // Declares all the variables that are to be initialized before running the server
 var (
-	Templates *template.Template // contains all the templates
-	Store     *sessions.CookieStore
+	Templates *template.Template     // contains all the templates
+	Store     *sessions.CookieStore  //cookie store
 	LiveUsers map[string]models.User // has info about all the users logged in
-
-	UsersInMeeting map[string]UserMeetingInfo       // contains info about all the users present in a meeting
-	clients        = make(map[*websocket.Conn]bool) // connected clients
-	broadcast      = make(chan Message)             // broadcast channel
-
-	// Configure the upgrader
-	upgrader = websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
-	}
+	//Upgrader upgrades the http connection
+	Upgrader websocket.Upgrader
 )
 
 //Init helps in initializing different variables and running functions
 func Init() {
 	models.DBinit()
-	LiveUsers = make(map[string]models.User)
+	models.MeetingsInit()
+
+	LiveUsers = make(map[string]models.User) //stores all the users that have been logged in
 	Templates = template.Must(template.ParseGlob("./html/*.gohtml"))
+
 	//related to session
 	authKeyOne := securecookie.GenerateRandomKey(64)
 	encryptionKeyOne := securecookie.GenerateRandomKey(32)
@@ -71,6 +51,13 @@ func Init() {
 	Store.Options = &sessions.Options{
 		// MaxAge:   60 * 15, //15 mins max for a cookie
 		HttpOnly: true,
+	}
+	Upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
 	}
 }
 
@@ -250,91 +237,47 @@ func MeetingsHandler(w http.ResponseWriter, r *http.Request) {
 
 //JoinMeetingHandler joins the user to a meeting and redirects him to the chatroom page
 func JoinMeetingHandler(w http.ResponseWriter, r *http.Request) {
-	//TODO: check the number of users and numAttendees
+	//TODO: check the number of users and numAttendees and start meeting
 	username, _ := GetSessionDetails(r)
-	// user := LiveUsers[username.(string)]
+	user := LiveUsers[username.(string)]
 	err := r.ParseForm()
 	if err != nil {
 		log.Println("failed to parse form in joinMeeting", err)
 	}
-	var userMeetingForm UserMeetingInfo
+
+	//creating new user for websocket and meeting
+	var userMeetingForm models.UserMeetingParams
 	decoder := schema.NewDecoder()
 	err = decoder.Decode(&userMeetingForm, r.PostForm)
 	if err != nil {
 		log.Println("failed to parse form in joinMeeting", err)
 	}
-	UsersInMeeting[username.(string)] = userMeetingForm
-	//TODO: redirect the user to the chatting page
-}
+	userMeetingForm.Username = username.(string)
 
-//CreateMeetingHandler creates and adds a meeting to the database
-func CreateMeetingHandler(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
+	//upgrade the connection to websocket
+	conn, err := Upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("failed to parse form during create meeting")
+		log.Println("failed to upgrade connection", err)
 	}
-	var meeting models.Meeting
-	decoder := schema.NewDecoder()
-	err = decoder.Decode(&meeting, r.PostForm)
-	if err != nil {
-		log.Println("failed to parse form from client in createMeeting", err)
+	server := models.ChatServers[userMeetingForm.MeetingName]
+	fmt.Println(server)
+	models.CreateUserMeetingParams(conn, server, &userMeetingForm)
+	fmt.Println(userMeetingForm)
+	server.AddUser(&userMeetingForm)
+	userMeetingForm.Listen()
+
+	data := Page{Title: "ChatRoom", IsAuth: true, IsAdmin: user.IsAdmin}
+	tErr := Templates.ExecuteTemplate(w, "chatroom", data)
+	if tErr != nil {
+		log.Println("failed to execute '/chatroom' template", tErr)
 	}
-	measurement := "meetings"
-	tags := map[string]string{}
-	fields := map[string]interface{}{
-		"name":             float64(meeting.Name),
-		"num_attendees":    float64(meeting.NumAttendees),
-		"time_space":       float64(meeting.TimeSpace),
-		"time_diff":        float64(meeting.TimeDiff),
-		"action_time_diff": float64(meeting.ActionTimeDiff),
-		"no_cntrl_ents":    float64(meeting.NoCntrlEnts),
-		"is_complete":      false,
-	}
-	t := time.Now()
-	fmt.Println("time now is", t)
-	models.DBwrite(measurement, tags, fields, t)
-	http.Redirect(w, r, "/meetings", http.StatusSeeOther)
+	fmt.Println(userMeetingForm)
 	return
 }
 
-func handleConnections(w http.ResponseWriter, r *http.Request) {
-	// Upgrade initial GET request to a websocket
-	ws, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	// Make sure we close the connection when the function returns
-	defer ws.Close()
-	// Register our new client
-	clients[ws] = true
-	for {
-		var msg Message
-		// Read in a new message as JSON and map it to a Message object
-		err := ws.ReadJSON(&msg)
-		if err != nil {
-			log.Printf("error: %v", err)
-			delete(clients, ws)
-			break
-		}
-		// Send the newly received message to the broadcast channel
-		broadcast <- msg
-	}
-}
-
-func handleMessages() {
-	for {
-		// Grab the next message from the broadcast channel
-		msg := <-broadcast
-		// Send it out to every client that is currently connected
-		for client := range clients {
-			err := client.WriteJSON(msg)
-			if err != nil {
-				log.Printf("error: %v", err)
-				client.Close()
-				delete(clients, client)
-			}
-		}
-	}
+// ShowMeetingHandler redirects the user to the chatroom Page
+func ShowMeetingHandler(w http.ResponseWriter, r *http.Request) {
+	return
 }
 
 func main() {
@@ -346,17 +289,13 @@ func main() {
 	r.HandleFunc("/logout", AuthRequired(LogOutGetHandler)).Methods("GET")
 	r.HandleFunc("/home", AuthRequired(HomeHandler)).Methods("GET")
 	r.HandleFunc("/meetings", AuthRequired(MeetingsHandler)).Methods("GET")
-	r.HandleFunc("/createMeeting", AuthRequired(CreateMeetingHandler)).Methods("POST")
+	r.HandleFunc("/createMeeting", AuthRequired(models.CreateMeetingHandler)).Methods("POST")
 	r.HandleFunc("/joinMeeting", AuthRequired(JoinMeetingHandler)).Methods("POST")
+	r.HandleFunc("/showMeeting", AuthRequired(ShowMeetingHandler)).Methods("GET")
 
 	r.HandleFunc("/test", TestHandler).Methods("GET")
-	// Configure websocket route
-	http.HandleFunc("/room", handleConnections)
 
 	r.PathPrefix("/public/").Handler(http.FileServer(http.Dir(".")))
-
-	// Start listening for incoming chat messages
-	go handleMessages()
 
 	fmt.Println("running server on port 9090")
 	http.ListenAndServe(":9090", r)
