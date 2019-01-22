@@ -54,7 +54,7 @@ func (user *UserMeetingParams) Write(message *Message) {
 	case user.OutgoingMessageCh <- message:
 	default:
 		user.Server.RemoveUser(user)
-		err := fmt.Errorf("userMeetingParams %d is disconnected", user.Username)
+		err := fmt.Errorf("userMeetingParams %s is disconnected", user.Username)
 		user.Server.Err(err)
 	}
 }

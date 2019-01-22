@@ -1,4 +1,9 @@
 $(document).ready(function () {
-    $('.modal').modal();
     $('select').formSelect();
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    var elem = document.querySelector('.modal');
+    var instance = M.Modal.init(elem);
+    instance.open();
 });

@@ -1,8 +1,10 @@
 package models
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
@@ -69,6 +71,25 @@ func CreateMeetingHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("failed to parse form from client in createMeeting", err)
 	}
 
+	url := "http://localhost:8000/policy/make_policy/"
+	jsonData := map[string]int64{
+		"name":             int64(meeting.Name),
+		"num_attendees":    int64(meeting.NumAttendees),
+		"time_space":       int64(meeting.TimeSpace),
+		"time_diff":        int64(meeting.TimeDiff),
+		"action_time_diff": int64(meeting.ActionTimeDiff),
+		"no_cntrl_ents":    int64(meeting.NoCntrlEnts),
+	}
+	jsonDataBytes, _ := json.Marshal(jsonData)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonDataBytes))
+	if err != nil {
+		log.Println("failed to run make_policy", err)
+	}
+	_, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("failed to get body from request in CreateMeetingHandler", err)
+	}
+	defer resp.Body.Close()
 	//initialize chat room server
 	server := NewServer(meeting)
 	ChatServers[meeting.Name] = server

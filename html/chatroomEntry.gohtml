@@ -1,0 +1,21 @@
+{{define "chatroomEntry"}}
+<!DOCTYPE html>
+<html lang="en">
+{{template "header" .}}
+<body>
+    <link rel="stylesheet" href="./public/css/chatroomEntry.css">
+    <script src="./public/js/chatroomEntry.js"></script>
+    <div class="joinMeetingModal">
+        {{template "joinMeeting" .}}
+    </div>
+    <div class="card-panel teal lighten-2">
+        <h4 class="timeDisplay white-text center">4:00pm</h4>
+    </div>
+    <div class="chatWindow">
+        <h1 id="temp">sdfgfdsg</h1>
+    </div>
+
+{{template "footer" .}}
+</body>
+</html>
+{{end}}

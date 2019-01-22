@@ -84,6 +84,7 @@ func RootHandler(w http.ResponseWriter, r *http.Request) {
 	if username != nil {
 		fmt.Println("username in cookie in ROOT", username)
 		user = models.GetUser(username.(string), "/")
+		//TODO: check the below if condition
 		if user.Username == "" {
 			log.Println("not a valid username and user in RootHandler", user)
 			http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -96,7 +97,7 @@ func RootHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		log.Println("no username in request for rootHandler")
 	}
-	data := Page{Title: "Home Page", User: user, IsAuth: false, Route: "/"}
+	data := Page{Title: "SK", User: user, IsAuth: false, Route: "/"}
 	tErr := Templates.ExecuteTemplate(w, "index", data)
 	if tErr != nil {
 		log.Println("failed to execute '/' template", tErr)
@@ -260,9 +261,9 @@ func JoinMeetingHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("failed to upgrade connection", err)
 	}
 	server := models.ChatServers[userMeetingForm.MeetingName]
-	fmt.Println(server)
+	fmt.Println("Server", server)
 	models.CreateUserMeetingParams(conn, server, &userMeetingForm)
-	fmt.Println(userMeetingForm)
+	fmt.Println("userMeetingForm", userMeetingForm)
 	server.AddUser(&userMeetingForm)
 	userMeetingForm.Listen()
 
@@ -275,8 +276,23 @@ func JoinMeetingHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// ShowMeetingHandler redirects the user to the chatroom Page
-func ShowMeetingHandler(w http.ResponseWriter, r *http.Request) {
+// SeeLogHandler redirects the user to the chatroom Page
+func SeeLogHandler(w http.ResponseWriter, r *http.Request) {
+	return
+}
+
+//SeeMeetingHandler redirects the user to the corresponding chatroom page
+func SeeMeetingHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	meetingID := vars["id"]
+
+	username, _ := GetSessionDetails(r)
+	user := LiveUsers[username.(string)]
+	data := Page{Title: "ChatRoom-" + meetingID, User: user, IsAuth: true, IsAdmin: user.IsAdmin}
+	tErr := Templates.ExecuteTemplate(w, "chatroomEntry", data)
+	if tErr != nil {
+		log.Println("failed to execute '/seeMeeting' template", tErr)
+	}
 	return
 }
 
@@ -290,8 +306,9 @@ func main() {
 	r.HandleFunc("/home", AuthRequired(HomeHandler)).Methods("GET")
 	r.HandleFunc("/meetings", AuthRequired(MeetingsHandler)).Methods("GET")
 	r.HandleFunc("/createMeeting", AuthRequired(models.CreateMeetingHandler)).Methods("POST")
+	r.HandleFunc("/seeMeeting{id}", AuthRequired(SeeMeetingHandler)).Methods("GET")
 	r.HandleFunc("/joinMeeting", AuthRequired(JoinMeetingHandler)).Methods("POST")
-	r.HandleFunc("/showMeeting", AuthRequired(ShowMeetingHandler)).Methods("GET")
+	r.HandleFunc("/seeLogMeeting{id}", AuthRequired(SeeLogHandler)).Methods("GET")
 
 	r.HandleFunc("/test", TestHandler).Methods("GET")
 
