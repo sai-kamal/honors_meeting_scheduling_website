@@ -49,9 +49,9 @@ func (user *UserMeetingParams) GetServer() *Server {
 }
 
 //Write sends the user a message
-func (user *UserMeetingParams) Write(message *Message) {
+func (user *UserMeetingParams) Write(message Message) {
 	select {
-	case user.OutgoingMessageCh <- message:
+	case user.OutgoingMessageCh <- &message:
 	default:
 		user.Server.RemoveUser(user)
 		err := fmt.Errorf("userMeetingParams %s is disconnected", user.Username)
@@ -71,12 +71,11 @@ func (user *UserMeetingParams) Listen() {
 }
 
 func (user *UserMeetingParams) listenWrite() {
-	log.Println("Listening to write to client")
 	for {
 		select {
 		//send message to user
 		case msg := <-user.OutgoingMessageCh:
-			//  log.Println("send in listenWrite for user :",user.id, msg)
+			log.Println("message is being sent from server to user", user, msg)
 			user.Conn.WriteJSON(&msg)
 			// receive done request
 		case <-user.DoneCh:
@@ -106,7 +105,7 @@ func (user *UserMeetingParams) listenRead() {
 				log.Println("Error while reading JSON from websocket ", err.Error())
 				user.Server.Err(err)
 			} else {
-				user.Server.ProcessNewIncomingMessage(&messageObj)
+				user.Server.ProcessNewIncomingMessage(messageObj)
 			}
 		}
 	}

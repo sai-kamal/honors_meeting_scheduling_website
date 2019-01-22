@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 )
@@ -19,10 +20,10 @@ type Message struct {
 //Server is the chatroom instance
 type Server struct {
 	ConnectedUsers       map[string]*UserMeetingParams // string stores the username of the user
-	Messages             []*Message
+	Messages             []Message
 	AddUserCh            chan *UserMeetingParams
 	RemoveUserCh         chan *UserMeetingParams
-	NewIncomingMessageCh chan *Message
+	NewIncomingMessageCh chan Message
 	ErrorCh              chan error
 	DoneCh               chan bool
 	MeetingParams        Meeting //contains info about the meeting
@@ -31,10 +32,10 @@ type Server struct {
 //NewServer creates a new server for the chatroom
 func NewServer(meeting Meeting) *Server {
 	ConnectedUsers := make(map[string]*UserMeetingParams)
-	Messages := []*Message{}
+	Messages := []Message{}
 	AddUserCh := make(chan *UserMeetingParams)
 	RemoveUserCh := make(chan *UserMeetingParams)
-	NewIncomingMessage := make(chan *Message)
+	NewIncomingMessage := make(chan Message)
 	ErrorCh := make(chan error)
 	DoneCh := make(chan bool)
 
@@ -52,8 +53,8 @@ func NewServer(meeting Meeting) *Server {
 
 //AddUser adds a new user to the server
 func (server *Server) AddUser(user *UserMeetingParams) {
-	log.Println("Adding user")
 	server.AddUserCh <- user
+	return
 }
 
 //RemoveUser removes a new user from the server
@@ -63,7 +64,8 @@ func (server *Server) RemoveUser(user *UserMeetingParams) {
 }
 
 //ProcessNewIncomingMessage processes incoming message
-func (server *Server) ProcessNewIncomingMessage(message *Message) {
+func (server *Server) ProcessNewIncomingMessage(message Message) {
+	fmt.Println("message received from user", message)
 	server.NewIncomingMessageCh <- message
 }
 
@@ -75,7 +77,6 @@ func (server *Server) Done() {
 //SendPastMessages sends all the past messages to a user
 func (server *Server) SendPastMessages(user *UserMeetingParams) {
 	for _, msg := range server.Messages {
-		//  log.Println("In sendPastMessages writing ",msg)
 		user.Write(msg)
 	}
 }
@@ -86,7 +87,7 @@ func (server *Server) Err(err error) {
 }
 
 //SendAll sends the message to all the users present in the chatroom
-func (server *Server) SendAll(msg *Message) {
+func (server *Server) SendAll(msg Message) {
 	for _, user := range server.ConnectedUsers {
 		user.Write(msg)
 	}
@@ -99,10 +100,11 @@ func (server *Server) Listen() {
 		select {
 		// Adding a new user
 		case user := <-server.AddUserCh:
-			log.Println("Added a new UserMeetingParams to the room")
+			log.Println("Added a new User to the room", user)
 			server.ConnectedUsers[user.Username] = user
-			log.Println("Now ", len(server.ConnectedUsers), " users are connected to chat room")
+			log.Println("Now", len(server.ConnectedUsers), "users are connected to chat room")
 			server.SendPastMessages(user)
+			//removing a new user
 		case user := <-server.RemoveUserCh:
 			log.Println("Removing user from chat room")
 			delete(server.ConnectedUsers, user.Username)

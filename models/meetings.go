@@ -92,6 +92,7 @@ func CreateMeetingHandler(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 	//initialize chat room server
 	server := NewServer(meeting)
+	fmt.Println("server in createMeetingHandler is", server, meeting.Name)
 	ChatServers[meeting.Name] = server
 	go server.Listen() // listens to all the requests to the server room
 

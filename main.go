@@ -29,9 +29,10 @@ type Page struct {
 
 // Declares all the variables that are to be initialized before running the server
 var (
-	Templates *template.Template     // contains all the templates
-	Store     *sessions.CookieStore  //cookie store
-	LiveUsers map[string]models.User // has info about all the users logged in
+	Templates  *template.Template     // contains all the templates
+	Store      *sessions.CookieStore  //cookie store
+	LiveUsers  map[string]models.User // has info about all the users logged in
+	LobbyUsers map[string]models.UserMeetingParams
 	//Upgrader upgrades the http connection
 	Upgrader websocket.Upgrader
 )
@@ -42,6 +43,7 @@ func Init() {
 	models.MeetingsInit()
 
 	LiveUsers = make(map[string]models.User) //stores all the users that have been logged in
+	LobbyUsers = make(map[string]models.UserMeetingParams)
 	Templates = template.Must(template.ParseGlob("./html/*.gohtml"))
 
 	//related to session
@@ -254,25 +256,12 @@ func JoinMeetingHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("failed to parse form in joinMeeting", err)
 	}
 	userMeetingForm.Username = username.(string)
-
-	//upgrade the connection to websocket
-	conn, err := Upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println("failed to upgrade connection", err)
-	}
-	server := models.ChatServers[userMeetingForm.MeetingName]
-	fmt.Println("Server", server)
-	models.CreateUserMeetingParams(conn, server, &userMeetingForm)
-	fmt.Println("userMeetingForm", userMeetingForm)
-	server.AddUser(&userMeetingForm)
-	userMeetingForm.Listen()
-
+	LobbyUsers[username.(string)] = userMeetingForm
 	data := Page{Title: "ChatRoom", IsAuth: true, IsAdmin: user.IsAdmin}
 	tErr := Templates.ExecuteTemplate(w, "chatroom", data)
 	if tErr != nil {
 		log.Println("failed to execute '/chatroom' template", tErr)
 	}
-	fmt.Println(userMeetingForm)
 	return
 }
 
@@ -288,12 +277,28 @@ func SeeMeetingHandler(w http.ResponseWriter, r *http.Request) {
 
 	username, _ := GetSessionDetails(r)
 	user := LiveUsers[username.(string)]
-	data := Page{Title: "ChatRoom-" + meetingID, User: user, IsAuth: true, IsAdmin: user.IsAdmin}
+	data := Page{Title: "ChatRoom-" + meetingID, User: user, IsAuth: true, IsAdmin: user.IsAdmin, Data: meetingID}
 	tErr := Templates.ExecuteTemplate(w, "chatroomEntry", data)
 	if tErr != nil {
 		log.Println("failed to execute '/seeMeeting' template", tErr)
 	}
 	return
+}
+
+//ChatHandler takes care of the chatroom websocket
+func ChatHandler(w http.ResponseWriter, r *http.Request) {
+	username, _ := GetSessionDetails(r)
+	userMeetingForm := LobbyUsers[username.(string)]
+	delete(LobbyUsers, username.(string))
+	//upgrade the connection to websocket
+	conn, err := Upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("failed to upgrade connection", err)
+	}
+	server := models.ChatServers[userMeetingForm.MeetingName]
+	models.CreateUserMeetingParams(conn, server, &userMeetingForm)
+	server.AddUser(&userMeetingForm)
+	userMeetingForm.Listen()
 }
 
 func main() {
@@ -308,8 +313,8 @@ func main() {
 	r.HandleFunc("/createMeeting", AuthRequired(models.CreateMeetingHandler)).Methods("POST")
 	r.HandleFunc("/seeMeeting{id}", AuthRequired(SeeMeetingHandler)).Methods("GET")
 	r.HandleFunc("/joinMeeting", AuthRequired(JoinMeetingHandler)).Methods("POST")
-	r.HandleFunc("/seeLogMeeting{id}", AuthRequired(SeeLogHandler)).Methods("GET")
-
+	r.HandleFunc("/seeLog{id}", AuthRequired(SeeLogHandler)).Methods("GET")
+	r.HandleFunc("/chat", AuthRequired(ChatHandler)).Methods("GET")
 	r.HandleFunc("/test", TestHandler).Methods("GET")
 
 	r.PathPrefix("/public/").Handler(http.FileServer(http.Dir(".")))
