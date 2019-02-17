@@ -8,6 +8,9 @@
     <div id="navbar">
         {{template "navbar" .}}
     </div>
+    <div class="joinMeetingModal">
+        {{template "joinMeeting" .}}
+    </div>
     <div class="meetings">
     <table class="striped highlight responsive-table">
         <tr>
@@ -30,7 +33,7 @@
                 <td>{{$v.ActionTimeDiff}}</td>
                 <td>{{$v.NoCntrlEnts}}</td>
                 {{if not $v.IsComplete}}
-                    <td><button class="waves-effect waves-light btn" id="{{$v.Name}}" onclick="see_meeting({{$v.Name}})">See Room</button></td>
+                    <td><button class="waves-effect waves-light btn" id="{{$v.Name}}" onclick="see_meeting({{$v.Name}}, {{$v.TimeSpace}}, {{$v.TimeDiff}})">See Room</button></td>
                 {{else}}
                     <td><button class="waves-effect waves-light btn" id="{{$v.Name}}" onclick="see_log_meeting({{$v.Name}})">See Log</button></td>
                 {{end}}

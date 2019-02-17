@@ -11,12 +11,11 @@ const channelBufSize = 100
 
 //UserMeetingParams contains info about users who joined a meeting
 type UserMeetingParams struct {
-	MeetingName      int64  `json:"meeting_name" schema:"meeting_name"`
-	Username         string `json:"username" schema:"username"`
-	AgentExpectation int64  `json:"delay" schema:"delay"`
+	MeetingName int64  `json:"meeting_name" schema:"meeting_name"`
+	Username    string `json:"username" schema:"username"`
+	Delay       int64  `json:"delay" schema:"delay"` //agent expectation
 	// CntrlEnt         int64  `json:"cntrl_ent" schema:"cntrl_ent"`
-	Importance int64 `json:"importance" schema:"importance"` // to represent the meeting importance to the user
-	//TODO: resp = 1
+	Importance        int64 `json:"importance" schema:"importance"` // to represent the meeting importance to the user
 	Conn              *websocket.Conn
 	Server            *Server
 	OutgoingMessageCh chan *Message
@@ -26,26 +25,16 @@ type UserMeetingParams struct {
 // CreateUserMeetingParams creates a new UserMeetingParams
 func CreateUserMeetingParams(conn *websocket.Conn, server *Server, user *UserMeetingParams) {
 	if conn == nil {
-		log.Println("connection cannot be nil", user)
+		log.Println("connection is nil for", user)
 	}
 	if server == nil {
-		log.Println(" Server cannot be nil", user)
+		log.Println(" Server is nil for", user)
 	}
 	user.Conn = conn
 	user.Server = server
-	user.OutgoingMessageCh = make(chan *Message, channelBufSize)
+	user.OutgoingMessageCh = make(chan *Message, channelBufSize) //messages byy a user can be multiple
 	user.DoneCh = make(chan bool)
 	return
-}
-
-//GetConn returns conn of the user
-func (user *UserMeetingParams) GetConn() *websocket.Conn {
-	return user.Conn
-}
-
-//GetServer returns server of the user
-func (user *UserMeetingParams) GetServer() *Server {
-	return user.Server
 }
 
 //Write sends the user a message
@@ -77,12 +66,10 @@ func (user *UserMeetingParams) listenWrite() {
 		case msg := <-user.OutgoingMessageCh:
 			log.Println("message is being sent from server to user", user, msg)
 			user.Conn.WriteJSON(&msg)
-			// receive done request
 		case <-user.DoneCh:
 			user.Server.RemoveUser(user)
 			user.DoneCh <- true
 			return
-
 		}
 	}
 }

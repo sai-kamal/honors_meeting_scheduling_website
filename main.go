@@ -29,10 +29,10 @@ type Page struct {
 
 // Declares all the variables that are to be initialized before running the server
 var (
-	Templates  *template.Template     // contains all the templates
-	Store      *sessions.CookieStore  //cookie store
-	LiveUsers  map[string]models.User // has info about all the users logged in
-	LobbyUsers map[string]models.UserMeetingParams
+	Templates  *template.Template                  // contains all the templates
+	Store      *sessions.CookieStore               //cookie store
+	LiveUsers  map[string]models.User              // has info about all the users logged in
+	LobbyUsers map[string]models.UserMeetingParams //contains userinfo who are in the process of joining a meeting
 	//Upgrader upgrades the http connection
 	Upgrader websocket.Upgrader
 )
@@ -242,22 +242,30 @@ func MeetingsHandler(w http.ResponseWriter, r *http.Request) {
 func JoinMeetingHandler(w http.ResponseWriter, r *http.Request) {
 	//TODO: check the number of users and numAttendees and start meeting
 	username, _ := GetSessionDetails(r)
-	user := LiveUsers[username.(string)]
 	err := r.ParseForm()
 	if err != nil {
 		log.Println("failed to parse form in joinMeeting", err)
 	}
 
 	//creating new user for websocket and meeting
-	var userMeetingForm models.UserMeetingParams
-	decoder := schema.NewDecoder()
-	err = decoder.Decode(&userMeetingForm, r.PostForm)
+	var userInMeetingForm models.UserMeetingParams
+	decoder := schema.NewDecoder() //receives delay, importance of meeting and meeting_name
+	err = decoder.Decode(&userInMeetingForm, r.PostForm)
 	if err != nil {
 		log.Println("failed to parse form in joinMeeting", err)
 	}
-	userMeetingForm.Username = username.(string)
-	LobbyUsers[username.(string)] = userMeetingForm
-	data := Page{Title: "ChatRoom", IsAuth: true, IsAdmin: user.IsAdmin}
+	userInMeetingForm.Username = username.(string)
+	LobbyUsers[username.(string)] = userInMeetingForm
+	http.Redirect(w, r, "/chatroom", http.StatusSeeOther)
+	return
+}
+
+//ChatroomHandler executes the chatroom template. This is a reduntant function just to change the url.
+//So no form has to be resubmitted multiple times
+func ChatroomHandler(w http.ResponseWriter, r *http.Request) {
+	username, _ := GetSessionDetails(r)
+	user := LiveUsers[username.(string)]
+	data := Page{Title: "ChatRoom", IsAuth: true, IsAdmin: user.IsAdmin, Data: username.(string)}
 	tErr := Templates.ExecuteTemplate(w, "chatroom", data)
 	if tErr != nil {
 		log.Println("failed to execute '/chatroom' template", tErr)
@@ -270,35 +278,20 @@ func SeeLogHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-//SeeMeetingHandler redirects the user to the corresponding chatroom page
-func SeeMeetingHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	meetingID := vars["id"]
-
-	username, _ := GetSessionDetails(r)
-	user := LiveUsers[username.(string)]
-	data := Page{Title: "ChatRoom-" + meetingID, User: user, IsAuth: true, IsAdmin: user.IsAdmin, Data: meetingID}
-	tErr := Templates.ExecuteTemplate(w, "chatroomEntry", data)
-	if tErr != nil {
-		log.Println("failed to execute '/seeMeeting' template", tErr)
-	}
-	return
-}
-
 //ChatHandler takes care of the chatroom websocket
 func ChatHandler(w http.ResponseWriter, r *http.Request) {
 	username, _ := GetSessionDetails(r)
-	userMeetingForm := LobbyUsers[username.(string)]
+	userInMeeting := LobbyUsers[username.(string)]
 	delete(LobbyUsers, username.(string))
 	//upgrade the connection to websocket
 	conn, err := Upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("failed to upgrade connection", err)
 	}
-	server := models.ChatServers[userMeetingForm.MeetingName]
-	models.CreateUserMeetingParams(conn, server, &userMeetingForm)
-	server.AddUser(&userMeetingForm)
-	userMeetingForm.Listen()
+	server := models.ChatServers[userInMeeting.MeetingName]
+	models.CreateUserMeetingParams(conn, server, &userInMeeting)
+	server.AddUser(&userInMeeting)
+	userInMeeting.Listen()
 }
 
 func main() {
@@ -311,10 +304,10 @@ func main() {
 	r.HandleFunc("/home", AuthRequired(HomeHandler)).Methods("GET")
 	r.HandleFunc("/meetings", AuthRequired(MeetingsHandler)).Methods("GET")
 	r.HandleFunc("/createMeeting", AuthRequired(models.CreateMeetingHandler)).Methods("POST")
-	r.HandleFunc("/seeMeeting{id}", AuthRequired(SeeMeetingHandler)).Methods("GET")
 	r.HandleFunc("/joinMeeting", AuthRequired(JoinMeetingHandler)).Methods("POST")
 	r.HandleFunc("/seeLog{id}", AuthRequired(SeeLogHandler)).Methods("GET")
 	r.HandleFunc("/chat", AuthRequired(ChatHandler)).Methods("GET")
+	r.HandleFunc("/chatroom", AuthRequired(ChatroomHandler)).Methods("GET")
 	r.HandleFunc("/test", TestHandler).Methods("GET")
 
 	r.PathPrefix("/public/").Handler(http.FileServer(http.Dir(".")))

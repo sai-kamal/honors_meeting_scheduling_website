@@ -1,6 +1,8 @@
-var message, userMessage, userName, output, socket, hostName;
+//global variables
+var message, message, userName, output, socket, hostName;
+
 $(document).ready(function(){
-    message = document.getElementById("userMessage")
+    message = document.getElementById("message")
     userName = document.getElementById("userName")
     output = document.getElementById("output")
     hostName = location.hostname;
@@ -34,9 +36,6 @@ $(document).ready(function(){
 });
 
 function send() {
-    if (userName.value === "") {
-        userName.value = "Anonymous"
-    }
     var time = new Date();
     var currenTimeStamp = time.toLocaleString('en-US', {
         hour: 'numeric',
@@ -48,7 +47,6 @@ function send() {
         message: message.value,
         timestamp: currenTimeStamp
     }
-    console.log("message is being sent", messageDetails);
     socket.send(JSON.stringify(messageDetails));
     message.value = "";
 }

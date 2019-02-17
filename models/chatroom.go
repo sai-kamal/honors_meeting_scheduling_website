@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
+	"time"
 )
 
 //Message struct used to
@@ -102,25 +104,37 @@ func (server *Server) Listen() {
 		case user := <-server.AddUserCh:
 			log.Println("Added a new User to the room", user)
 			server.ConnectedUsers[user.Username] = user
-			log.Println("Now", len(server.ConnectedUsers), "users are connected to chat room")
 			server.SendPastMessages(user)
-			//removing a new user
+			server.AddInfoToDB(user, "user "+user.Username+" added")
+		//removing a new user
 		case user := <-server.RemoveUserCh:
 			log.Println("Removing user from chat room")
 			delete(server.ConnectedUsers, user.Username)
+			server.AddInfoToDB(user, "user "+user.Username+" removed")
+
 		case msg := <-server.NewIncomingMessageCh:
 			server.Messages = append(server.Messages, msg)
-			//TODO: update database with all the messages that have been used
 			server.SendAll(msg)
 		case err := <-server.ErrorCh:
 			log.Println("Error : ", err)
 		case <-server.DoneCh:
 			return
-			//TODO: clear everything from the server connected to that meeting
+			//TODO: clear everything from the server connected to that meeting and shut down the server
 		}
 	}
 }
 
 func (server *Server) handleGetAllMessages(responseWriter http.ResponseWriter, request *http.Request) {
 	json.NewEncoder(responseWriter).Encode(server)
+}
+
+//AddInfoToDB records in db the action
+func (server *Server) AddInfoToDB(user *UserMeetingParams, action string) {
+	measurement := strconv.Itoa(int(server.MeetingParams.Name))
+	tags := map[string]string{}
+	fields := map[string]interface{}{
+		"action": action,
+	}
+	t := time.Now()
+	DBwrite(measurement, tags, fields, t)
 }
