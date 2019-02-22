@@ -292,6 +292,7 @@ func ChatHandler(w http.ResponseWriter, r *http.Request) {
 	models.CreateUserMeetingParams(conn, server, &userInMeeting)
 	server.AddUser(&userInMeeting)
 	userInMeeting.Listen()
+	fmt.Println("\n\nchat handler function ended\n\n")
 }
 
 func main() {
@@ -309,6 +310,7 @@ func main() {
 	r.HandleFunc("/chat", AuthRequired(ChatHandler)).Methods("GET")
 	r.HandleFunc("/chatroom", AuthRequired(ChatroomHandler)).Methods("GET")
 	r.HandleFunc("/test", TestHandler).Methods("GET")
+	// r.HandleFunc("/changeDelay", models.ChangeDelayHandler).Methods("POST")
 
 	r.PathPrefix("/public/").Handler(http.FileServer(http.Dir(".")))
 

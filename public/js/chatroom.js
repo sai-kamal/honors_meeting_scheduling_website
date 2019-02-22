@@ -16,6 +16,11 @@ $(document).ready(function(){
 
     socket.onmessage = function (e) {
         var messageDetails = JSON.parse(e.data);
+        if(messageDetails.type == "change_time") {
+            console.log(messageDetails.time);
+            $(".timeDisplay").text(messageDetails.time);
+            return
+        }
         console.log(messageDetails)
         var divNode = document.createElement("div");
         var userSpanNode = document.createElement("span");
@@ -65,3 +70,19 @@ function send() {
 
 ga('create', 'UA-105302950-1', 'auto');
 ga('send', 'pageview');
+
+function delayPopUp() {
+    var elem = document.querySelector('#delayModal');
+    var instance = M.Modal.getInstance(elem);
+    var selectDelay = $('#delay');
+    //can take all possible values from the current time
+    for (let i = 0; i <= temp; i++) {
+        var opt = $("<option>", {
+            // value: origExpect + i,
+            // text: String(i * timeDiff) + " min"
+        })
+        selectDelay.append(opt);
+    }
+    $('select').formSelect(); //materialize css
+    instance.open();
+}

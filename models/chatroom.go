@@ -1,17 +1,19 @@
 package models
 
 import (
-	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 )
 
 //Message struct used to
-//TODO: create correct message struct
 type Message struct {
+	Type      string `json:"type"`
+	Time      string `json:"time"`
 	Username  string `json:"username"`
 	Message   string `json:"message"`
 	ActionInt int    `json:"action_int"`
@@ -26,30 +28,37 @@ type Server struct {
 	AddUserCh            chan *UserMeetingParams
 	RemoveUserCh         chan *UserMeetingParams
 	NewIncomingMessageCh chan Message
-	ErrorCh              chan error
 	DoneCh               chan bool
+	Cond                 *sync.Cond
+	Time                 int64
 	MeetingParams        Meeting //contains info about the meeting
+	sync.Mutex
+}
+
+//MeetingsInit initializes everything for the meetings
+func MeetingsInit() {
+	ChatServers = make(map[int64]*Server)
 }
 
 //NewServer creates a new server for the chatroom
 func NewServer(meeting Meeting) *Server {
-	ConnectedUsers := make(map[string]*UserMeetingParams)
-	Messages := []Message{}
-	AddUserCh := make(chan *UserMeetingParams)
-	RemoveUserCh := make(chan *UserMeetingParams)
-	NewIncomingMessage := make(chan Message)
-	ErrorCh := make(chan error)
-	DoneCh := make(chan bool)
+	var server Server
+	server.ConnectedUsers = make(map[string]*UserMeetingParams)
+	server.Messages = []Message{}
+	server.AddUserCh = make(chan *UserMeetingParams)
+	server.RemoveUserCh = make(chan *UserMeetingParams)
+	server.NewIncomingMessageCh = make(chan Message)
+	server.DoneCh = make(chan bool)
+	server.MeetingParams = meeting
+	server.Cond = sync.NewCond(&server)
+	server.Time = 0
+	return &server
+}
 
-	return &Server{
-		ConnectedUsers,
-		Messages,
-		AddUserCh,
-		RemoveUserCh,
-		NewIncomingMessage,
-		ErrorCh,
-		DoneCh,
-		meeting,
+//SignalUsers signals the condition variable for all the users connected to server.
+func (server *Server) SignalUsers() {
+	for _, user := range server.ConnectedUsers {
+		user.Cond.Signal()
 	}
 }
 
@@ -83,11 +92,6 @@ func (server *Server) SendPastMessages(user *UserMeetingParams) {
 	}
 }
 
-//Err reports error from the server
-func (server *Server) Err(err error) {
-	server.ErrorCh <- err
-}
-
 //SendAll sends the message to all the users present in the chatroom
 func (server *Server) SendAll(msg Message) {
 	for _, user := range server.ConnectedUsers {
@@ -98,6 +102,7 @@ func (server *Server) SendAll(msg Message) {
 //Listen listens and responds to requests in the chatroom
 func (server *Server) Listen() {
 	log.Println("chatroom Server Listening .....")
+	ticker := time.NewTicker(15 * time.Second)
 	for {
 		select {
 		// Adding a new user
@@ -105,36 +110,95 @@ func (server *Server) Listen() {
 			log.Println("Added a new User to the room", user)
 			server.ConnectedUsers[user.Username] = user
 			server.SendPastMessages(user)
-			server.AddInfoToDB(user, "user "+user.Username+" added")
+			server.AddActionInfoToDB("add", "user "+user.Username+" added")
 		//removing a new user
 		case user := <-server.RemoveUserCh:
 			log.Println("Removing user from chat room")
 			delete(server.ConnectedUsers, user.Username)
-			server.AddInfoToDB(user, "user "+user.Username+" removed")
-
+			server.AddActionInfoToDB("remove", "user "+user.Username+" removed")
+		// change meeting time every 10 sec with the next timesptamp. Should change tcer, time and should signal all the users.
+		case <-ticker.C:
+			server.Time++
+			//checks if the current time > max allowed time, then remove and close every thing
+			if server.Time > (server.MeetingParams.TimeSpace / server.MeetingParams.TimeDiff) {
+				server.CloseEverything()
+			} else {
+				var msg Message //changes time on screen for all users
+				msg.Type = "change_time"
+				msg.Time = strconv.Itoa(int(server.Time*server.MeetingParams.TimeDiff)) + " min"
+				server.SendAll(msg)
+				server.CheckTimeAndCurrExpect()
+			}
 		case msg := <-server.NewIncomingMessageCh:
 			server.Messages = append(server.Messages, msg)
 			server.SendAll(msg)
-		case err := <-server.ErrorCh:
-			log.Println("Error : ", err)
 		case <-server.DoneCh:
+			ticker.Stop()
 			return
-			//TODO: clear everything from the server connected to that meeting and shut down the server
 		}
 	}
 }
 
-func (server *Server) handleGetAllMessages(responseWriter http.ResponseWriter, request *http.Request) {
-	json.NewEncoder(responseWriter).Encode(server)
-}
-
-//AddInfoToDB records in db the action
-func (server *Server) AddInfoToDB(user *UserMeetingParams, action string) {
+//AddActionInfoToDB records in db the action
+func (server *Server) AddActionInfoToDB(typeAction string, action interface{}) {
 	measurement := strconv.Itoa(int(server.MeetingParams.Name))
-	tags := map[string]string{}
+	tags := map[string]string{
+		"type": typeAction,
+	}
 	fields := map[string]interface{}{
 		"action": action,
+		"time":   server.Time,
 	}
 	t := time.Now()
 	DBwrite(measurement, tags, fields, t)
+}
+
+// CheckTimeAndCurrExpect checks and updates time to match with curr expect
+func (server *Server) CheckTimeAndCurrExpect() {
+	server.Lock()
+	if server.Time > server.MeetingParams.CurrExpect {
+		server.MeetingParams.CurrExpect = server.Time
+		server.AddCurrExpectInfoToDB() //update DB with the new curr_expect
+		server.SignalUsers()           //signalling all the users that the curr_expect has changed
+	}
+	server.Unlock()
+	//TODO:send message to change curr_expect in browser
+}
+
+//AddCurrExpectInfoToDB records in db the action
+func (server *Server) AddCurrExpectInfoToDB() {
+	measurement := strconv.Itoa(int(server.MeetingParams.Name))
+	tags := map[string]string{
+		"type": "changed_curr_expect",
+	}
+	fields := map[string]interface{}{
+		"curr_expect": server.MeetingParams.CurrExpect,
+		"time":        server.Time,
+	}
+	t := time.Now()
+	DBwrite(measurement, tags, fields, t)
+}
+
+//CloseEverything shutdowns everything related to the server
+func (server *Server) CloseEverything() {
+	for _, user := range server.ConnectedUsers { //signal and close every user connection
+		user.Done()
+	}
+
+	//removing mdp and params from python server's memory
+	resp, err := http.Get(PythonServerURL + "delete_policy/" + strconv.Itoa(int(server.MeetingParams.Name)))
+	if err != nil {
+		log.Println("failed to clos mdp in python server", err)
+	}
+	_, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("failed to get body from resp delete_policy from python server", err)
+	}
+	fmt.Println(resp.Body)
+	resp.Body.Close()
+
+	// remove meeting from current meetings and stop its own server in go
+	delete(ChatServers, server.MeetingParams.Name)
+	log.Println("deleted chat server " + strconv.Itoa(int(server.MeetingParams.Name)) + " from ChatServers map")
+	server.Done()
 }

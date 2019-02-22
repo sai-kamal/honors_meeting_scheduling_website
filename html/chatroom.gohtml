@@ -3,18 +3,26 @@
 <html lang="en">
 {{template "header" .}}
 <body>
+    <div class="delayModal">
+    {{template "delay" .}}
+    </div>
     <link rel="stylesheet" href="./public/css/chatroom.css">
     <script src="./public/js/chatroom.js"></script>
     <div class="joinMeetingModal">
         {{template "joinMeeting" .}}
     </div>
     <div class="card-panel teal lighten-2">
-        <h4 class="timeDisplay white-text center">4:00pm</h4>
+        <h4 class="timeDisplay white-text center">0 min</h4>
+    </div>
+    <div class="paramsDisplayTable">
+    {{/* displays necessary params of user and meeting which are to be known by the user. */}}
     </div>
     <div class="chatWindow">
         <h3 id="temp">chatroom</h3>
     </div>
-    
+    <div class="delayButton">
+        <button class="waves-effect waves-light btn" onclick="delayPopUp()">Change Delay</button>
+    </div>
     <div class="text-center">
         <div class="row">
             <div class="col-md-6 col-md-offset-3">

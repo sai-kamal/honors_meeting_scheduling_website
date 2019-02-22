@@ -12,6 +12,11 @@ import (
 	"github.com/gorilla/schema"
 )
 
+const (
+	//PythonServerURL describes the URL of the python server
+	PythonServerURL string = "http://localhost/8000/policy/"
+)
+
 var (
 	//ChatServers contains all the different chatroom servers
 	ChatServers map[int64]*Server
@@ -19,19 +24,16 @@ var (
 
 //Meeting struct defines the necessary parameters related to the user
 type Meeting struct {
-	MTime          string `json:"time" schema:"time"` //start time of meeting
+	DBTime         string `json:"time" schema:"time"` //time the meeting was created in DB
 	Name           int64  `json:"name" schema:"name"` //name of meeting
 	NumAttendees   int64  `json:"num_attendees" schema:"num_attendees"`
 	TimeSpace      int64  `json:"time_space" schema:"time_space"`
 	TimeDiff       int64  `json:"time_diff" schema:"time_diff"`
 	ActionTimeDiff int64  `json:"action_time_diff" schema:"action_time_diff"`
 	NoCntrlEnts    int64  `json:"no_cntrl_ents" schema:"no_cntrl_ents"`
+	CurrExpect     int64  `json:"current_expect" schema:"current_expect"`
+	OrigExpect     int64  `json:"orig_expect" schema:"orig_expect"`
 	IsComplete     bool   `json:"is_complete" schema:"is_complete"`
-}
-
-//MeetingsInit initializes everything for the meetings
-func MeetingsInit() {
-	ChatServers = make(map[int64]*Server)
 }
 
 //GetMeetings gets the meeting info from the database
@@ -45,14 +47,15 @@ func GetMeetings(route string) []Meeting {
 	}
 	for _, val := range resp[0].Series[0].Values {
 		var meeting Meeting
-		meeting.MTime = val[0].(string)
+		meeting.DBTime = val[0].(string)
 		meeting.ActionTimeDiff, _ = val[1].(json.Number).Int64()
 		meeting.IsComplete = val[2].(bool)
 		meeting.Name, _ = val[3].(json.Number).Int64()
 		meeting.NoCntrlEnts, _ = val[4].(json.Number).Int64()
 		meeting.NumAttendees, _ = val[5].(json.Number).Int64()
-		meeting.TimeDiff, _ = val[6].(json.Number).Int64()
-		meeting.TimeSpace, _ = val[7].(json.Number).Int64()
+		meeting.OrigExpect, _ = val[6].(json.Number).Int64()
+		meeting.TimeDiff, _ = val[7].(json.Number).Int64()
+		meeting.TimeSpace, _ = val[8].(json.Number).Int64()
 		meetings = append(meetings, meeting)
 	}
 	return meetings
@@ -71,7 +74,8 @@ func CreateMeetingHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("failed to parse form from client in createMeeting", err)
 	}
 
-	url := "http://localhost:8000/policy/make_policy/"
+	meeting.CurrExpect = meeting.OrigExpect
+
 	jsonData := map[string]int64{
 		"name":             int64(meeting.Name),
 		"num_attendees":    int64(meeting.NumAttendees),
@@ -79,9 +83,10 @@ func CreateMeetingHandler(w http.ResponseWriter, r *http.Request) {
 		"time_diff":        int64(meeting.TimeDiff),
 		"action_time_diff": int64(meeting.ActionTimeDiff),
 		"no_cntrl_ents":    int64(meeting.NoCntrlEnts),
+		"orig_expect":      int64(meeting.OrigExpect),
 	}
 	jsonDataBytes, _ := json.Marshal(jsonData)
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonDataBytes))
+	resp, err := http.Post(PythonServerURL+"make_policy/", "application/json", bytes.NewBuffer(jsonDataBytes))
 	if err != nil {
 		log.Println("failed to run make_policy", err)
 	}
@@ -105,6 +110,7 @@ func CreateMeetingHandler(w http.ResponseWriter, r *http.Request) {
 		"time_diff":        float64(meeting.TimeDiff),
 		"action_time_diff": float64(meeting.ActionTimeDiff),
 		"no_cntrl_ents":    float64(meeting.NoCntrlEnts),
+		"orig_expect":      float64(meeting.OrigExpect),
 		"is_complete":      false,
 	}
 	t := time.Now()
