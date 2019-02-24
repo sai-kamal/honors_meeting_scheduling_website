@@ -7,14 +7,16 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/gorilla/schema"
 )
 
 const (
 	//PythonServerURL describes the URL of the python server
-	PythonServerURL string = "http://localhost/8000/policy/"
+	PythonServerURL string = "http://localhost:8000/policy/"
 )
 
 var (
@@ -97,9 +99,8 @@ func CreateMeetingHandler(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 	//initialize chat room server
 	server := NewServer(meeting)
-	fmt.Println("server in createMeetingHandler is", server, meeting.Name)
 	ChatServers[meeting.Name] = server
-	go server.Listen() // listens to all the requests to the server room
+	// go server.Listen() // listens to all the requests to the server room
 
 	measurement := "meetings"
 	tags := map[string]string{}
@@ -117,4 +118,17 @@ func CreateMeetingHandler(w http.ResponseWriter, r *http.Request) {
 	DBwrite(measurement, tags, fields, t)
 	http.Redirect(w, r, "/meetings", http.StatusSeeOther)
 	return
+}
+
+// StartMeetingHandler starts the chat server listening functionality
+//used to control the number of people in a room and have them to wait until everything is set
+func StartMeetingHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	meetingName, err := strconv.Atoi(vars["meetingName"])
+	if err != nil {
+		log.Println("failed to convert string to int64", err)
+	}
+	go ChatServers[int64(meetingName)].Listen()
+	return
+	//TODO:make superuser/admin to see the log room
 }

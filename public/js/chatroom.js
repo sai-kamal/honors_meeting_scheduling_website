@@ -16,10 +16,14 @@ $(document).ready(function(){
 
     socket.onmessage = function (e) {
         var messageDetails = JSON.parse(e.data);
-        if(messageDetails.type == "change_time") {
+        if(messageDetails.type === "change_time") {
             console.log(messageDetails.time);
             $(".timeDisplay").text(messageDetails.time);
             return
+        } else if (messageDetails.type === "change_curr_expect") {
+            $("#currExpectDisp").text(messageDetails.time);
+        } else if (messageDetails.type === "change_agent_expect") {
+            $("#agentExpectDisp").text(messageDetails.time);
         }
         console.log(messageDetails)
         var divNode = document.createElement("div");

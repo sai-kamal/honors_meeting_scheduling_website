@@ -15,7 +15,16 @@
         <h4 class="timeDisplay white-text center">0 min</h4>
     </div>
     <div class="paramsDisplayTable">
-    {{/* displays necessary params of user and meeting which are to be known by the user. */}}
+    <table>
+    <tr>
+        <th>Current Expectation</th>
+        <th>Agent Expectation(delay)</th>
+    </tr>
+    <tr>
+        <td id="currExpectDisp">0 min</td>
+        <td id="agentExpectDisp">0 min</td>
+    </tr>
+    </table>
     </div>
     <div class="chatWindow">
         <h3 id="temp">chatroom</h3>

@@ -240,7 +240,6 @@ func MeetingsHandler(w http.ResponseWriter, r *http.Request) {
 
 //JoinMeetingHandler joins the user to a meeting and redirects him to the chatroom page
 func JoinMeetingHandler(w http.ResponseWriter, r *http.Request) {
-	//TODO: check the number of users and numAttendees and start meeting
 	username, _ := GetSessionDetails(r)
 	err := r.ParseForm()
 	if err != nil {
@@ -291,6 +290,7 @@ func ChatHandler(w http.ResponseWriter, r *http.Request) {
 	server := models.ChatServers[userInMeeting.MeetingName]
 	models.CreateUserMeetingParams(conn, server, &userInMeeting)
 	server.AddUser(&userInMeeting)
+	fmt.Println("\nadasdasdasd")
 	userInMeeting.Listen()
 	fmt.Println("\n\nchat handler function ended\n\n")
 }
@@ -310,6 +310,7 @@ func main() {
 	r.HandleFunc("/chat", AuthRequired(ChatHandler)).Methods("GET")
 	r.HandleFunc("/chatroom", AuthRequired(ChatroomHandler)).Methods("GET")
 	r.HandleFunc("/test", TestHandler).Methods("GET")
+	r.HandleFunc("/startMeeting{meetingName}", models.StartMeetingHandler).Methods("GET")
 	// r.HandleFunc("/changeDelay", models.ChangeDelayHandler).Methods("POST")
 
 	r.PathPrefix("/public/").Handler(http.FileServer(http.Dir(".")))

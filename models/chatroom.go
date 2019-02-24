@@ -70,7 +70,6 @@ func (server *Server) AddUser(user *UserMeetingParams) {
 
 //RemoveUser removes a new user from the server
 func (server *Server) RemoveUser(user *UserMeetingParams) {
-	log.Println("Removing user")
 	server.RemoveUserCh <- user
 }
 
@@ -102,7 +101,7 @@ func (server *Server) SendAll(msg Message) {
 //Listen listens and responds to requests in the chatroom
 func (server *Server) Listen() {
 	log.Println("chatroom Server Listening .....")
-	ticker := time.NewTicker(15 * time.Second)
+	ticker := time.NewTicker(5 * time.Second)
 	for {
 		select {
 		// Adding a new user
@@ -160,9 +159,12 @@ func (server *Server) CheckTimeAndCurrExpect() {
 		server.MeetingParams.CurrExpect = server.Time
 		server.AddCurrExpectInfoToDB() //update DB with the new curr_expect
 		server.SignalUsers()           //signalling all the users that the curr_expect has changed
+		var msg Message                //changes curr_expect on screen for all users
+		msg.Type = "change_curr_expect"
+		msg.Time = strconv.Itoa(int(server.MeetingParams.CurrExpect*server.MeetingParams.TimeDiff)) + " min"
+		server.SendAll(msg)
 	}
 	server.Unlock()
-	//TODO:send message to change curr_expect in browser
 }
 
 //AddCurrExpectInfoToDB records in db the action

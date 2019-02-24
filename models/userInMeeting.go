@@ -64,7 +64,7 @@ func (user *UserMeetingParams) Write(message Message) {
 	default:
 		user.Server.RemoveUser(user)
 		err := fmt.Errorf("userMeetingParams %s is disconnected", user.Username)
-		user.Server.Err(err)
+		log.Println("err in Write of user", err)
 	}
 }
 
@@ -110,7 +110,6 @@ func (user *UserMeetingParams) listenRead() {
 			if err != nil {
 				user.DoneCh <- true
 				log.Println("Error while reading JSON from websocket ", err.Error())
-				user.Server.Err(err)
 			} else {
 				user.Server.ProcessNewIncomingMessage(messageObj)
 			}
