@@ -5,13 +5,13 @@
 {{template "login" .}}
 
 {{if (eq .Route "/")}}
-  <nav class="nb teal accent-1">
+  <nav class="white-text nb teal accent-1">
   {{/* <nav class="transparent z-depth-0"> */}}
 {{else}}
   <nav class="teal lighten-2">
 {{end}}
   <div class="nav-wrapper">
-    <a href="/" class="brand-logo">Logo</a>
+    <a href="/" class="white-text brand-logo">Logo</a>
     <a href="javascript:void(0);" data-target="mobile-demo" class="sidenav-trigger"><i class="fa fa-bars"></i></a>
     <ul class="right hide-on-med-and-down">
       {{if not .IsAuth}}

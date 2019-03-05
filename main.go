@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"personal_website/models"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/schema"
@@ -41,10 +42,10 @@ var (
 func Init() {
 	models.DBinit()
 	models.MeetingsInit()
-
-	LiveUsers = make(map[string]models.User) //stores all the users that have been logged in
-	LobbyUsers = make(map[string]models.UserMeetingParams)
 	Templates = template.Must(template.ParseGlob("./html/*.gohtml"))
+	LiveUsers = make(map[string]models.User) //stores all the users that have been logged in
+	//to keep track of users who are going to enter a meeting
+	LobbyUsers = make(map[string]models.UserMeetingParams)
 
 	//related to session
 	authKeyOne := securecookie.GenerateRandomKey(64)
@@ -54,6 +55,7 @@ func Init() {
 		// MaxAge:   60 * 15, //15 mins max for a cookie
 		HttpOnly: true,
 	}
+	//related to sockets
 	Upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -99,7 +101,7 @@ func RootHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		log.Println("no username in request for rootHandler")
 	}
-	data := Page{Title: "SK", User: user, IsAuth: false, Route: "/"}
+	data := Page{Title: "$K", User: user, IsAuth: false, Route: "/"}
 	tErr := Templates.ExecuteTemplate(w, "index", data)
 	if tErr != nil {
 		log.Println("failed to execute '/' template", tErr)
@@ -109,8 +111,7 @@ func RootHandler(w http.ResponseWriter, r *http.Request) {
 
 //LogInPostHandler logins a user
 func LogInPostHandler(w http.ResponseWriter, r *http.Request) {
-	//getting form data
-	err := r.ParseForm()
+	err := r.ParseForm() //getting form data
 	if err != nil {
 		log.Println("failed to parse form during log in")
 	}
@@ -133,7 +134,6 @@ func LogInPostHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	log.Println("passwords matched")
 	//creating new sessiontoken
 	sessionToken, uuidErr := uuid.NewV4()
 	if uuidErr != nil {
@@ -187,7 +187,7 @@ func GetSessionDetails(r *http.Request) (username, sessionID interface{}) {
 	return
 }
 
-//HomeHandler executes the template after the user logins
+//HomeHandler executes the template after the user logins "/home"
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	username, _ := GetSessionDetails(r)
 	user := LiveUsers[username.(string)]
@@ -226,8 +226,7 @@ func LogOutGetHandler(w http.ResponseWriter, r *http.Request) {
 
 //MeetingsHandler lists out all the meetings after querying the database
 func MeetingsHandler(w http.ResponseWriter, r *http.Request) {
-	//get info of meetings from database
-	meetingsDB := models.GetMeetings("/meetings")
+	meetingsDB := models.GetMeetings("/meetings") //get info of meetings from database
 	username, _ := GetSessionDetails(r)
 	user := LiveUsers[username.(string)]
 	data := Page{Title: "Meetings", IsAuth: true, Data: meetingsDB, IsAdmin: user.IsAdmin}
@@ -245,7 +244,6 @@ func JoinMeetingHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("failed to parse form in joinMeeting", err)
 	}
-
 	//creating new user for websocket and meeting
 	var userInMeetingForm models.UserMeetingParams
 	decoder := schema.NewDecoder() //receives delay, importance of meeting and meeting_name
@@ -264,7 +262,18 @@ func JoinMeetingHandler(w http.ResponseWriter, r *http.Request) {
 func ChatroomHandler(w http.ResponseWriter, r *http.Request) {
 	username, _ := GetSessionDetails(r)
 	user := LiveUsers[username.(string)]
-	data := Page{Title: "ChatRoom", IsAuth: true, IsAdmin: user.IsAdmin, Data: username.(string)}
+	userInMeeting := LobbyUsers[username.(string)]
+	server := models.ChatServers[userInMeeting.MeetingName]
+	dataStr := struct {
+		OrigExpect int64
+		TimeSpace  int64
+		TimeDiff   int64
+	}{
+		OrigExpect: server.MeetingParams.OrigExpect,
+		TimeSpace:  server.MeetingParams.TimeSpace,
+		TimeDiff:   server.MeetingParams.TimeDiff,
+	}
+	data := Page{Title: "ChatRoom", IsAuth: true, IsAdmin: user.IsAdmin, Data: dataStr}
 	tErr := Templates.ExecuteTemplate(w, "chatroom", data)
 	if tErr != nil {
 		log.Println("failed to execute '/chatroom' template", tErr)
@@ -290,9 +299,45 @@ func ChatHandler(w http.ResponseWriter, r *http.Request) {
 	server := models.ChatServers[userInMeeting.MeetingName]
 	models.CreateUserMeetingParams(conn, server, &userInMeeting)
 	server.AddUser(&userInMeeting)
-	fmt.Println("\nadasdasdasd")
 	userInMeeting.Listen()
-	fmt.Println("\n\nchat handler function ended\n\n")
+	fmt.Println("\n\nchat handler function ended for ", username)
+	http.Redirect(w, r, "/feedback", http.StatusSeeOther) //after meeting for user, redirected to feedback page
+}
+
+// FeedBackGetHandler displays the feedback page
+func FeedBackGetHandler(w http.ResponseWriter, r *http.Request) {
+	username, _ := GetSessionDetails(r)
+	user := LiveUsers[username.(string)]
+	data := Page{Title: "FeedBack", User: user, IsAuth: true, IsAdmin: user.IsAdmin}
+	tErr := Templates.ExecuteTemplate(w, "feedback", data)
+	if tErr != nil {
+		log.Println("failed to execute '/feedback' template", tErr)
+	}
+}
+
+// FeedBackPostHandler records user's experience of the agent's action in meeting
+func FeedBackPostHandler(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		log.Println("failed to parse form during create meeting")
+	}
+	var meeting models.Meeting
+	decoder := schema.NewDecoder()
+	err = decoder.Decode(&meeting, r.PostForm)
+	if err != nil {
+		log.Println("failed to parse form from client in createMeeting", err)
+	}
+	username, _ := GetSessionDetails(r)
+	measurement := strconv.Itoa(int(meeting.Name))
+	tags := map[string]string{}
+	fields := map[string]interface{}{
+		"feedback": float64(meeting.Feedback),
+		"user":     username.(string),
+	}
+	t := time.Now()
+	models.DBwrite(measurement, tags, fields, t)
+	http.Redirect(w, r, "/meetings", http.StatusSeeOther)
+	return
 }
 
 func main() {
@@ -309,9 +354,10 @@ func main() {
 	r.HandleFunc("/seeLog{id}", AuthRequired(SeeLogHandler)).Methods("GET")
 	r.HandleFunc("/chat", AuthRequired(ChatHandler)).Methods("GET")
 	r.HandleFunc("/chatroom", AuthRequired(ChatroomHandler)).Methods("GET")
+	r.HandleFunc("/startMeeting{meetingName}", AuthRequired(models.StartMeetingHandler)).Methods("GET")
+	r.HandleFunc("/feedback", AuthRequired(FeedBackGetHandler)).Methods("GET")
+	r.HandleFunc("/feedback", AuthRequired(FeedBackPostHandler)).Methods("POST")
 	r.HandleFunc("/test", TestHandler).Methods("GET")
-	r.HandleFunc("/startMeeting{meetingName}", models.StartMeetingHandler).Methods("GET")
-	// r.HandleFunc("/changeDelay", models.ChangeDelayHandler).Methods("POST")
 
 	r.PathPrefix("/public/").Handler(http.FileServer(http.Dir(".")))
 

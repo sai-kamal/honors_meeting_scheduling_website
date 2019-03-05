@@ -3,34 +3,37 @@
 <html lang="en">
 {{template "header" .}}
 <body>
-    <div class="delayModal">
-    {{template "delay" .}}
-    </div>
-    <link rel="stylesheet" href="./public/css/chatroom.css">
+    <link rel="stylesheet" href="./public/css/chatroom.css"/>
     <script src="./public/js/chatroom.js"></script>
-    <div class="joinMeetingModal">
-        {{template "joinMeeting" .}}
+    <div class="delayModal">
+        {{template "delay" .}}
     </div>
+    <div class="transferControlModal">
+        {{template "transfer_control" .}}
+    </div>
+    
     <div class="card-panel teal lighten-2">
-        <h4 class="timeDisplay white-text center">0 min</h4>
+        <h4 class="white-text center" id="timeDisplay">Not Yet Started</h4>
     </div>
     <div class="paramsDisplayTable">
     <table>
-    <tr>
-        <th>Current Expectation</th>
-        <th>Agent Expectation(delay)</th>
-    </tr>
-    <tr>
-        <td id="currExpectDisp">0 min</td>
-        <td id="agentExpectDisp">0 min</td>
-    </tr>
+        <tr>
+            <th>Original Expectation</th>
+            <th>Current Expectation</th>
+            <th>Agent Expectation(delay)</th>
+        </tr>
+        <tr>
+            <td id="origExpectDisp">- min</td>
+            <td id="currExpectDisp">- min</td>
+            <td id="agentExpectDisp">- min</td>
+        </tr>
     </table>
     </div>
     <div class="chatWindow">
         <h3 id="temp">chatroom</h3>
     </div>
     <div class="delayButton">
-        <button class="waves-effect waves-light btn" onclick="delayPopUp()">Change Delay</button>
+        <button class="waves-effect waves-light btn" onclick="delayPopUp({{.Data.TimeSpace}}, {{.Data.TimeDiff}}, {{.Data.OrigExpect}})">Change Delay</button>
     </div>
     <div class="text-center">
         <div class="row">
@@ -51,7 +54,7 @@
             </div>
         </div>
     </div>
-{{template "footer" .}}
+    {{template "footer" .}}
 </body>
 </html>
 {{end}}

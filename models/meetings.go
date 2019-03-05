@@ -26,16 +26,17 @@ var (
 
 //Meeting struct defines the necessary parameters related to the user
 type Meeting struct {
-	DBTime         string `json:"time" schema:"time"` //time the meeting was created in DB
-	Name           int64  `json:"name" schema:"name"` //name of meeting
-	NumAttendees   int64  `json:"num_attendees" schema:"num_attendees"`
-	TimeSpace      int64  `json:"time_space" schema:"time_space"`
-	TimeDiff       int64  `json:"time_diff" schema:"time_diff"`
-	ActionTimeDiff int64  `json:"action_time_diff" schema:"action_time_diff"`
-	NoCntrlEnts    int64  `json:"no_cntrl_ents" schema:"no_cntrl_ents"`
-	CurrExpect     int64  `json:"current_expect" schema:"current_expect"`
-	OrigExpect     int64  `json:"orig_expect" schema:"orig_expect"`
-	IsComplete     bool   `json:"is_complete" schema:"is_complete"`
+	DBTime         string `json:"time,omitempty" schema:"time,omitempty"` //time the meeting was created in DB
+	Name           int64  `json:"name,omitempty" schema:"name,omitempty"` //name of meeting
+	NumAttendees   int64  `json:"num_attendees,omitempty" schema:"num_attendees,omitempty"`
+	TimeSpace      int64  `json:"time_space,omitempty" schema:"time_space,omitempty"`
+	TimeDiff       int64  `json:"time_diff,omitempty" schema:"time_diff,omitempty"`
+	ActionTimeDiff int64  `json:"action_time_diff,omitempty" schema:"action_time_diff,omitempty"`
+	NoCntrlEnts    int64  `json:"no_cntrl_ents,omitempty" schema:"no_cntrl_ents,omitempty"`
+	CurrExpect     int64  `json:"current_expect,omitempty" schema:"current_expect,omitempty"`
+	OrigExpect     int64  `json:"orig_expect,omitempty" schema:"orig_expect,omitempty"`
+	IsComplete     bool   `json:"is_complete,omitempty" schema:"is_complete,omitempty"`
+	Feedback       int64  `json:"feedback,omitempty" schema:"feedback,omitempty"`
 }
 
 //GetMeetings gets the meeting info from the database
@@ -101,7 +102,6 @@ func CreateMeetingHandler(w http.ResponseWriter, r *http.Request) {
 	server := NewServer(meeting)
 	ChatServers[meeting.Name] = server
 	// go server.Listen() // listens to all the requests to the server room
-
 	measurement := "meetings"
 	tags := map[string]string{}
 	fields := map[string]interface{}{

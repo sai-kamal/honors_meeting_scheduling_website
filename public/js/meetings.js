@@ -6,11 +6,14 @@ document.addEventListener('DOMContentLoaded', function () {
 function see_meeting(meetingName, timeSpace, timeDiff, origExpect) {
     $('#meeting_name').val(meetingName);
     var elem = document.querySelector('#joinMeeting');
-    var instance = M.Modal.getInstance(elem);
+    var instance = M.Modal.init(elem);
     var selectDelay = $('#delay');
     var temp = Math.floor((timeSpace - (origExpect * timeDiff)) / timeDiff);
     for (let i = 0; i <= temp; i++) {
-        var opt = $("<option>", {value: origExpect+i, text: String(i*timeDiff) + " min"})
+        var opt = $("<option>", {
+            value: origExpect+i,
+            text: String(i*timeDiff) + " min"
+        })
         selectDelay.append(opt);
     }
     $('select').formSelect(); //materialize css

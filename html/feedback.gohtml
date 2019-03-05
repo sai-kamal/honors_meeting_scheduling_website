@@ -1,0 +1,42 @@
+{{define "feedback"}}
+<!DOCTYPE html>
+<html>
+{{template "header" .}}
+<body>
+    <link rel="stylesheet" href="./public/css/feedback.css"/>
+    <script src="./public/js/feedback.js"></script>
+    <div id="navbar">
+        {{template "navbar" .}}
+    </div>
+    <div>
+        <form action="/feedback" method="POST">
+            <div>
+                <div class="row">
+                    <div class="input-field col s12">
+                        <input id="name" class="validate" type="text" name="name">
+                        <label for="name">Meeting Name</label>
+                    </div>
+                </div>
+                <div class="input-field">
+                    <select name="feedback">
+                        <option value="" disabled selected>Feedback on Agent's performance</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                    </select>
+                    {{/* <label for="feedback_dropdown">Feedback</label> */}}
+                </div>
+            </div>
+            <div class="row">
+                <div class="input-field center-align">
+                    <button class="btn waves-effect waves-light" type="submit">submit</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    {{template "footer" .}}
+</body>
+</html>
+{{end}}

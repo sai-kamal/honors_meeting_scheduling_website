@@ -10,15 +10,17 @@ import (
 	"time"
 )
 
-//Message struct used to
+//Message struct used to send messages b/n server and client
 type Message struct {
-	Type      string `json:"type"`
-	Time      string `json:"time"`
-	Username  string `json:"username"`
-	Message   string `json:"message"`
-	ActionInt int    `json:"action_int"`
-	Action    string `json:"action"`
-	Sender    int    `json:"sender"` //agent or user
+	Type         string    `json:"type,omitempty"`
+	Time         string    `json:"time,omitempty"`
+	Username     string    `json:"username,omitempty"`
+	Message      string    `json:"message,omitempty"`
+	ActionInt    int64     `json:"action_int,omitempty"`
+	Action       string    `json:"action,omitempty"`
+	Sender       int64     `json:"sender,omitempty"` //agent or user
+	Actions      []float64 `json:"actions,omitempty"`
+	ActionsNames []string  `json:"actions_names,omitempty"`
 }
 
 //Server is the chatroom instance
@@ -73,22 +75,9 @@ func (server *Server) RemoveUser(user *UserMeetingParams) {
 	server.RemoveUserCh <- user
 }
 
-//ProcessNewIncomingMessage processes incoming message
-func (server *Server) ProcessNewIncomingMessage(message Message) {
-	fmt.Println("message received from user", message)
-	server.NewIncomingMessageCh <- message
-}
-
 //Done signals that it is done
 func (server *Server) Done() {
 	server.DoneCh <- true
-}
-
-//SendPastMessages sends all the past messages to a user
-func (server *Server) SendPastMessages(user *UserMeetingParams) {
-	for _, msg := range server.Messages {
-		user.Write(msg)
-	}
 }
 
 //SendAll sends the message to all the users present in the chatroom
@@ -98,48 +87,60 @@ func (server *Server) SendAll(msg Message) {
 	}
 }
 
+//ChangeTime sends message(through socket) to all users to change time of meeting in browser
+func (server *Server) ChangeTime() {
+	var msg Message //changes time on screen for all users
+	msg.Type = "change_time"
+	msg.Time = strconv.Itoa(int(server.Time*server.MeetingParams.TimeDiff)) + " min"
+	server.SendAll(msg)
+}
+
+//ChangeCurrExpectDisp sends message(through socket) to all users to change curr_expect
+func (server *Server) ChangeCurrExpectDisp() {
+	var msg Message //changes time on screen for all users
+	msg.Type = "change_curr_expect"
+	msg.Time = strconv.Itoa(int(server.MeetingParams.CurrExpect*server.MeetingParams.TimeDiff)) + " min"
+	server.SendAll(msg)
+}
+
 //Listen listens and responds to requests in the chatroom
 func (server *Server) Listen() {
-	log.Println("chatroom Server Listening .....")
-	ticker := time.NewTicker(5 * time.Second)
+	log.Println(server.MeetingParams.Name, " Listening .....")
+	ticker := time.NewTicker(30 * time.Second)
 	for {
 		select {
 		// Adding a new user
 		case user := <-server.AddUserCh:
 			log.Println("Added a new User to the room", user)
 			server.ConnectedUsers[user.Username] = user
-			server.SendPastMessages(user)
-			server.AddActionInfoToDB("add", "user "+user.Username+" added")
+			server.AddUserInfoToDB("add", "user "+user.Username+" added")
+			user.InitTimes()
+			user.Cond.Signal()
 		//removing a new user
 		case user := <-server.RemoveUserCh:
 			log.Println("Removing user from chat room")
 			delete(server.ConnectedUsers, user.Username)
-			server.AddActionInfoToDB("remove", "user "+user.Username+" removed")
+			server.AddUserInfoToDB("remove", "user "+user.Username+" removed")
 		// change meeting time every 10 sec with the next timesptamp. Should change tcer, time and should signal all the users.
 		case <-ticker.C:
 			server.Time++
 			//checks if the current time > max allowed time, then remove and close every thing
 			if server.Time > (server.MeetingParams.TimeSpace / server.MeetingParams.TimeDiff) {
-				server.CloseEverything()
+				server.Done()
 			} else {
-				var msg Message //changes time on screen for all users
-				msg.Type = "change_time"
-				msg.Time = strconv.Itoa(int(server.Time*server.MeetingParams.TimeDiff)) + " min"
-				server.SendAll(msg)
+				server.ChangeTime()
 				server.CheckTimeAndCurrExpect()
 			}
-		case msg := <-server.NewIncomingMessageCh:
-			server.Messages = append(server.Messages, msg)
-			server.SendAll(msg)
 		case <-server.DoneCh:
 			ticker.Stop()
+			server.CloseEverything()
 			return
 		}
 	}
 }
 
-//AddActionInfoToDB records in db the action
-func (server *Server) AddActionInfoToDB(typeAction string, action interface{}) {
+//AddUserInfoToDB records in db the action
+func (server *Server) AddUserInfoToDB(typeAction string, action interface{}) {
 	measurement := strconv.Itoa(int(server.MeetingParams.Name))
 	tags := map[string]string{
 		"type": typeAction,
@@ -159,10 +160,7 @@ func (server *Server) CheckTimeAndCurrExpect() {
 		server.MeetingParams.CurrExpect = server.Time
 		server.AddCurrExpectInfoToDB() //update DB with the new curr_expect
 		server.SignalUsers()           //signalling all the users that the curr_expect has changed
-		var msg Message                //changes curr_expect on screen for all users
-		msg.Type = "change_curr_expect"
-		msg.Time = strconv.Itoa(int(server.MeetingParams.CurrExpect*server.MeetingParams.TimeDiff)) + " min"
-		server.SendAll(msg)
+		server.ChangeCurrExpectDisp()
 	}
 	server.Unlock()
 }
@@ -202,5 +200,5 @@ func (server *Server) CloseEverything() {
 	// remove meeting from current meetings and stop its own server in go
 	delete(ChatServers, server.MeetingParams.Name)
 	log.Println("deleted chat server " + strconv.Itoa(int(server.MeetingParams.Name)) + " from ChatServers map")
-	server.Done()
+	// server.Done()
 }

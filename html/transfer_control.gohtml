@@ -1,0 +1,24 @@
+{{define "transfer_control"}}
+{{/* <link rel="stylesheet" href="./public/css/delay.css"/>
+<script src="./public/js/delay.js"></script> */}}
+
+<div id="transferControlModal" class="modal z-depth-5 fade">
+  <div class="modal-content">
+    <h4 class="card-panel teal lighten-2">Choose truthful action</h4>
+    <div class="row">
+      <div class="row">
+        <div class="input-field col s12">
+          <select name="actions" id="actions">
+          </select>
+          <label for="actions">Actions available</label>
+        </div>
+      </div>
+      <div class="row">
+        <div class="input-field col s12">
+          <button class="btn waves-effect waves-light" onclick="sendActionToServer()">Change</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{{end}}
