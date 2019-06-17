@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"net"
 	"net/http"
+	"os"
 	"personal_website/models"
 	"strconv"
 	"time"
@@ -36,10 +38,12 @@ var (
 	LobbyUsers map[string]models.UserMeetingParams //contains userinfo who are in the process of joining a meeting
 	//Upgrader upgrades the http connection
 	Upgrader websocket.Upgrader
+	IP       string
 )
 
 //Init helps in initializing different variables and running functions
 func Init() {
+	IP = findMyIP()
 	models.DBinit()
 	models.MeetingsInit()
 	Templates = template.Must(template.ParseGlob("./html/*.gohtml"))
@@ -63,6 +67,22 @@ func Init() {
 			return true
 		},
 	}
+}
+
+func findMyIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		os.Stderr.WriteString("Oops: " + err.Error() + "\n")
+		os.Exit(1)
+	}
+	for _, a := range addrs {
+		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+	return ""
 }
 
 //AuthRequired redirects the user to "/" page if not logged in
@@ -302,6 +322,7 @@ func ChatHandler(w http.ResponseWriter, r *http.Request) {
 	userInMeeting.Listen()
 	fmt.Println("\n\nchat handler function ended for ", username)
 	http.Redirect(w, r, "/feedback", http.StatusSeeOther) //after meeting for user, redirected to feedback page
+	defer conn.Close()
 }
 
 // FeedBackGetHandler displays the feedback page

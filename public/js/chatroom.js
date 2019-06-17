@@ -74,9 +74,7 @@ $(document).ready(function(){
     userName = document.getElementById("userName")
     output = document.getElementById("output")
     hostName = location.hostname;
-    if(hostName == "localhost") {
-        socket = new WebSocket("ws://localhost:3000/chat")
-    }
+    socket = new WebSocket("ws://" + hostName + ":3000/chat")
 
     socket.onopen = function () {
         $("#temp").text("Status: Connected");
@@ -96,22 +94,21 @@ $(document).ready(function(){
         if(messageDetails.type === "transfer_control") {
             openTransferControlPopUp(messageDetails)
         }
-
-        var divNode = document.createElement("div");
-        var userSpanNode = document.createElement("span");
-        var boldNode = document.createElement("strong");
-        var messageSpanNode = document.createElement("span");
-        userSpanNode.setAttribute("class", "col col-md-4");
-        messageSpanNode.setAttribute("class", "col col-md-8");
-        divNode.setAttribute("class", "row");
-        var userTextnode = document.createTextNode(messageDetails.username + "-");
-        var messageTextnode = document.createTextNode(messageDetails.message + "\n");
-        boldNode.appendChild(userTextnode);
-        userSpanNode.appendChild(boldNode);
-        messageSpanNode.appendChild(messageTextnode);
-        divNode.appendChild(userSpanNode);
-        divNode.appendChild(messageSpanNode);
-        document.getElementById("output").appendChild(divNode);
+        // var divNode = document.createElement("div");
+        // var userSpanNode = document.createElement("span");
+        // var boldNode = document.createElement("strong");
+        // var messageSpanNode = document.createElement("span");
+        // userSpanNode.setAttribute("class", "col col-md-4");
+        // messageSpanNode.setAttribute("class", "col col-md-8");
+        // divNode.setAttribute("class", "row");
+        // var userTextnode = document.createTextNode(messageDetails.username + "-");
+        // var messageTextnode = document.createTextNode(messageDetails.message + "\n");
+        // boldNode.appendChild(userTextnode);
+        // userSpanNode.appendChild(boldNode);
+        // messageSpanNode.appendChild(messageTextnode);
+        // divNode.appendChild(userSpanNode);
+        // divNode.appendChild(messageSpanNode);
+        // document.getElementById("output").appendChild(divNode);
     }
 });
 

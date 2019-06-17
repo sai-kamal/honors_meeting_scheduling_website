@@ -18,11 +18,11 @@ const channelBufSize = 100
 
 //UserMeetingParams contains info about users who joined a meeting
 type UserMeetingParams struct {
-	MeetingName int64  `json:"meeting_name,omitempty" schema:"meeting_name"`
-	Username    string `json:"username,omitempty" schema:"username"`
-	Delay       int64  `json:"delay,omitempty" schema:"delay"` //agent expectation
-	// CntrlEnt         int64  `json:"cntrl_ent,omitempty" schema:"cntrl_ent"`
-	Importance        int64 `json:"importance,omitempty" schema:"importance"` // to represent the meeting importance to the user
+	MeetingName int64  `json:"meeting_name" schema:"meeting_name"`
+	Username    string `json:"username" schema:"username"`
+	Delay       int64  `json:"delay" schema:"delay"` //agent expectation
+	// CntrlEnt         int64  `json:"cntrl_ent" schema:"cntrl_ent"`
+	Importance        int64 `json:"importance" schema:"importance"` // to represent the meeting importance to the user
 	Conn              *websocket.Conn
 	Server            *Server
 	OutgoingMessageCh chan *Message
@@ -34,14 +34,14 @@ type UserMeetingParams struct {
 
 //ActionQuery is used in requests to find out the action in the mdp policy at a states
 type ActionQuery struct {
-	CntrlEntity   int64 `json:"cntrl_ent,omitempty" schema:"cntrl_ent"`
-	CurrentExpect int64 `json:"tcer,omitempty" schema:"tcer"`
-	AgentExpect   int64 `json:"aer,omitempty" schema:"aer"`
-	MeetingStatus int64 `json:"a_status,omitempty" schema:"a_status"`
-	Response      int64 `json:"resp,omitempty" schema:"resp"`
-	Time          int64 `json:"time,omitempty" schema:"time"`
-	Importance    int64 `json:"imp,omitempty" schema:"imp"`
-	MeetingName   int64 `json:"meeting_name,omitempty" schema:"meeting_name"`
+	CntrlEntity   int64 `json:"cntrl_ent" schema:"cntrl_ent"`
+	CurrentExpect int64 `json:"tcer" schema:"tcer"`
+	AgentExpect   int64 `json:"aer" schema:"aer"`
+	MeetingStatus int64 `json:"a_status" schema:"a_status"`
+	Response      int64 `json:"resp" schema:"resp"`
+	Time          int64 `json:"time" schema:"time"`
+	Importance    int64 `json:"imp" schema:"imp"`
+	MeetingName   int64 `json:"meeting_name" schema:"meeting_name"`
 }
 
 //ActionInfo is used to store unmarshalled data about a single action from python server
@@ -52,8 +52,8 @@ type ActionInfo struct {
 
 //ActionArrays is used to store 2 arrays for a entity from python server
 type ActionArrays struct {
-	Actions      []float64 `json:"actions,omitempty"`
-	ActionsNames []string  `json:"actions_names,omitempty"`
+	Actions      []float64 `json:"actions"`
+	ActionsNames []string  `json:"actions_names"`
 }
 
 // CreateUserMeetingParams creates a new UserMeetingParams
@@ -67,7 +67,7 @@ func CreateUserMeetingParams(conn *websocket.Conn, server *Server, user *UserMee
 	user.Conn = conn
 	user.Server = server
 	user.OutgoingMessageCh = make(chan *Message, channelBufSize) //messages byy a user can be multiple
-	user.DoneCh = make(chan bool)
+	user.DoneCh = make(chan bool, 10)
 	user.Cond = sync.NewCond(user) //created condition variable for user
 	user.ActionCh = make(chan ActionInfo)
 	return
@@ -87,6 +87,12 @@ func (user *UserMeetingParams) Write(message Message) {
 //Done signals the user that it is done
 func (user *UserMeetingParams) Done() {
 	user.DoneCh <- true
+	// user.Conn.Close()
+	var message Message
+	message.Type = "close_connection"
+	user.Conn.WriteJSON(&message)
+	user.Cond.Signal()
+	fmt.Println("user.Done called")
 }
 
 //InitTimes initializes all times as soon as server starts to listen in browser for all users
@@ -121,7 +127,7 @@ func (user *UserMeetingParams) ChangeDelayDB() {
 	}
 	fields := map[string]interface{}{
 		"username": user.Username,
-		"delay":    user.Delay,
+		"delay_to": user.Delay,
 		"time":     user.Server.Time,
 	}
 	t := time.Now()
@@ -150,7 +156,6 @@ func (user *UserMeetingParams) Listen() {
 	go user.AgentWorks()
 	go user.listenWrite()
 	user.listenRead()
-	user.Cond.Signal() //signals user to check if he has to take an action
 }
 
 func (user *UserMeetingParams) listenWrite() {
@@ -160,7 +165,6 @@ func (user *UserMeetingParams) listenWrite() {
 		case msg := <-user.OutgoingMessageCh:
 			user.Conn.WriteJSON(&msg)
 		case <-user.DoneCh:
-			user.Server.RemoveUser(user)
 			user.DoneCh <- true
 			return
 		}
@@ -168,23 +172,25 @@ func (user *UserMeetingParams) listenWrite() {
 }
 
 func (user *UserMeetingParams) listenRead() {
-	//log.Println("Listening to Read to client")
 	for {
 		select {
 		//receive Done request
 		case <-user.DoneCh:
-			user.Server.RemoveUser(user)
 			user.DoneCh <- true
 			return
 		// read data from websocket connection
 		default:
 			var message Message
 			err := user.Conn.ReadJSON(&message)
+			fmt.Println("message type", message.Type)
 			if err != nil {
 				user.DoneCh <- true
+				// go user.Done()
 				log.Println("Error while reading JSON from websocket ", err.Error())
 			} else {
-				if message.Type == "change_user_delay" { //gets message from client to change user delay
+				if message.Type == "close_connection" {
+					return
+				} else if message.Type == "change_user_delay" { //gets message from client to change user delay
 					user.Lock() //synchronizing delay for user
 					intTime, err := strconv.Atoi(message.Time)
 					if err != nil {
@@ -194,6 +200,7 @@ func (user *UserMeetingParams) listenRead() {
 					user.ChangeDelayDB()
 					user.ChangeDelayDisp()
 					user.Unlock()
+					user.Cond.Signal() //signalling user as his delay has changed
 				} else if message.Type == "transfer_control_reply" {
 					user.ActionCh <- ActionInfo{
 						Action:     message.ActionInt,
@@ -208,17 +215,16 @@ func (user *UserMeetingParams) listenRead() {
 //AgentWorks runs the agent and mimics actions in the background
 func (user *UserMeetingParams) AgentWorks() {
 	//just for testing transfer_control in user
-	actions := user.GetActions(1)
-	var msg Message
-	msg.Type = "transfer_control"
-	msg.Actions = actions.Actions
-	msg.ActionsNames = actions.ActionsNames
-	user.Write(msg)
+	// actions := user.GetActions(1)
+	// var msg Message
+	// msg.Type = "transfer_control"
+	// msg.Actions = actions.Actions
+	// msg.ActionsNames = actions.ActionsNames
+	// user.Write(msg)
 
 	for {
 		select {
 		case <-user.DoneCh:
-			user.Server.RemoveUser(user)
 			user.DoneCh <- true
 			return
 		default:
@@ -229,7 +235,6 @@ func (user *UserMeetingParams) AgentWorks() {
 			meeting := &user.Server.MeetingParams
 			aer := user.Delay
 			tcer := meeting.CurrExpect
-			fmt.Println("aer = ", aer, "tcer = ", tcer)
 			if aer-tcer > 0 { //user is still not in the meeting
 				var query ActionQuery //signifies state
 				query.CntrlEntity = 0 //agent
@@ -318,6 +323,7 @@ func (user *UserMeetingParams) GetActions(who int) ActionArrays { //who == 1 is 
 func (user *UserMeetingParams) ChangeParamsWithAction(actionInfo ActionInfo) int {
 	meeting := &user.Server.MeetingParams
 	action := actionInfo.Action
+	fmt.Println("action is", actionInfo.ActionName)
 	ret := 1 //acion is not "no action"
 	if action == 0 {
 		log.Println("action is to do nothing, so DID NOTHING")

@@ -12,15 +12,15 @@ import (
 
 //Message struct used to send messages b/n server and client
 type Message struct {
-	Type         string    `json:"type,omitempty"`
-	Time         string    `json:"time,omitempty"`
-	Username     string    `json:"username,omitempty"`
-	Message      string    `json:"message,omitempty"`
-	ActionInt    int64     `json:"action_int,omitempty"`
-	Action       string    `json:"action,omitempty"`
-	Sender       int64     `json:"sender,omitempty"` //agent or user
-	Actions      []float64 `json:"actions,omitempty"`
-	ActionsNames []string  `json:"actions_names,omitempty"`
+	Type         string    `json:"type"`
+	Time         string    `json:"time"`
+	Username     string    `json:"username"`
+	Message      string    `json:"message"`
+	ActionInt    int64     `json:"action_int"`
+	Action       string    `json:"action"`
+	Sender       int64     `json:"sender"` //agent or user
+	Actions      []float64 `json:"actions"`
+	ActionsNames []string  `json:"actions_names"`
 }
 
 //Server is the chatroom instance
@@ -50,7 +50,7 @@ func NewServer(meeting Meeting) *Server {
 	server.AddUserCh = make(chan *UserMeetingParams)
 	server.RemoveUserCh = make(chan *UserMeetingParams)
 	server.NewIncomingMessageCh = make(chan Message)
-	server.DoneCh = make(chan bool)
+	server.DoneCh = make(chan bool, 10)
 	server.MeetingParams = meeting
 	server.Cond = sync.NewCond(&server)
 	server.Time = 0
@@ -105,9 +105,10 @@ func (server *Server) ChangeCurrExpectDisp() {
 
 //Listen listens and responds to requests in the chatroom
 func (server *Server) Listen() {
-	log.Println(server.MeetingParams.Name, " Listening .....")
-	ticker := time.NewTicker(30 * time.Second)
+	log.Println("chat server, ", server.MeetingParams.Name, " Listening .....")
+	ticker := time.NewTicker(25 * time.Second)
 	for {
+		fmt.Println("server time is ", server.Time)
 		select {
 		// Adding a new user
 		case user := <-server.AddUserCh:
@@ -115,18 +116,24 @@ func (server *Server) Listen() {
 			server.ConnectedUsers[user.Username] = user
 			server.AddUserInfoToDB("add", "user "+user.Username+" added")
 			user.InitTimes()
+			user.Lock()
+			user.ChangeDelayDB()
+			user.Unlock()
 			user.Cond.Signal()
 		//removing a new user
 		case user := <-server.RemoveUserCh:
 			log.Println("Removing user from chat room")
 			delete(server.ConnectedUsers, user.Username)
 			server.AddUserInfoToDB("remove", "user "+user.Username+" removed")
+			user.Done()
 		// change meeting time every 10 sec with the next timesptamp. Should change tcer, time and should signal all the users.
 		case <-ticker.C:
 			server.Time++
 			//checks if the current time > max allowed time, then remove and close every thing
 			if server.Time > (server.MeetingParams.TimeSpace / server.MeetingParams.TimeDiff) {
 				server.Done()
+				// server.DoneCh <- true
+				fmt.Println("donech has true now")
 			} else {
 				server.ChangeTime()
 				server.CheckTimeAndCurrExpect()
@@ -182,6 +189,10 @@ func (server *Server) AddCurrExpectInfoToDB() {
 //CloseEverything shutdowns everything related to the server
 func (server *Server) CloseEverything() {
 	for _, user := range server.ConnectedUsers { //signal and close every user connection
+		//removing users connected to server
+		log.Println("Removing user from chat room")
+		delete(server.ConnectedUsers, user.Username)
+		server.AddUserInfoToDB("remove", "user "+user.Username+" removed")
 		user.Done()
 	}
 
@@ -194,11 +205,9 @@ func (server *Server) CloseEverything() {
 	if err != nil {
 		log.Println("failed to get body from resp delete_policy from python server", err)
 	}
-	fmt.Println(resp.Body)
 	resp.Body.Close()
 
 	// remove meeting from current meetings and stop its own server in go
 	delete(ChatServers, server.MeetingParams.Name)
 	log.Println("deleted chat server " + strconv.Itoa(int(server.MeetingParams.Name)) + " from ChatServers map")
-	// server.Done()
 }
